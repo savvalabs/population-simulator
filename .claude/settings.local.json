@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(touch PopulationSimulator/backend/engine/simulation.py)",
+      "Bash(touch PopulationSimulator/backend/engine/animal.py)",
+      "Bash(touch PopulationSimulator/backend/engine/environment.py)",
+      "Bash(touch PopulationSimulator/backend/engine/resources.py)",
+      "Bash(touch PopulationSimulator/backend/engine/reproduction.py)"
+    ]
+  }
+}
