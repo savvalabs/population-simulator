@@ -33,6 +33,7 @@ coverage.xml
 # IDEs
 .vscode/
 .idea/
+.claude/
 
 # OS
 .DS_Store
