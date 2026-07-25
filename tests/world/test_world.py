@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from population_engine.ecs.entity import Entity
+from population_engine.ecs.entity import Entity, EntityAllocator
 from population_engine.world.biome import Biome
 from population_engine.world.chunk import DEFAULT_CHUNK_SIZE
 from population_engine.world.coords import CellCoord, ChunkCoord
@@ -13,10 +13,11 @@ from population_engine.world.field import DEFAULT_HALO
 from population_engine.world.world import World
 
 
-def _entity() -> Entity:
-    from population_engine.ecs.entity import EntityAllocator
+_ENTITY_ALLOC = EntityAllocator()
 
-    return EntityAllocator().allocate()
+
+def _entity() -> Entity:
+    return _ENTITY_ALLOC.allocate()
 
 
 def _world(**kwargs) -> World:
@@ -192,15 +193,15 @@ def test_classify_scalar_first_match() -> None:
         Biome("broad", min_altitude=0, max_altitude=5000),
     ]
     w = _world(seed=1, biomes=biomes)
-    # (500, 25, 0.5) matches both 'low' and 'broad' → first match = index 0.
-    assert w.classify(500, 25, 0.5) == 0
+    # (500, 25, 0.5) matches both 'low' and 'broad' → first match = biome id 1.
+    assert w.classify(500, 25, 0.5) == 1
 
 
 def test_classify_scalar_tiers() -> None:
     w = _world(seed=1, biomes=_tier_biomes())
-    assert w.classify(500, 25, 0.5) == 0
-    assert w.classify(1500, 15, 0.5) == 1
-    assert w.classify(3500, 5, 0.5) == 2
+    assert w.classify(500, 25, 0.5) == 1
+    assert w.classify(1500, 15, 0.5) == 2
+    assert w.classify(3500, 5, 0.5) == 3
 
 
 def test_classify_scalar_no_match_returns_zero() -> None:

@@ -5,17 +5,18 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from population_engine.ecs.entity import Entity, EntityAllocator
 from population_engine.world.chunk import DEFAULT_CHUNK_SIZE, Chunk
 from population_engine.world.coords import ChunkCoord
 from population_engine.world.field import DEFAULT_HALO, FIELD_NAMES, Field
 
 
-def _mock_entity() -> Entity:
-    """Create a dummy Entity — we only need its identity, not registry backing."""
-    from population_engine.ecs.entity import EntityAllocator
+_ALLOC = EntityAllocator()
 
-    alloc = EntityAllocator()
-    return alloc.allocate()
+
+def _mock_entity() -> Entity:
+    """A dummy :class:`Entity` with a unique identity (no registry backing needed)."""
+    return _ALLOC.allocate()
 
 
 # -- construction ----------------------------------------------------------
