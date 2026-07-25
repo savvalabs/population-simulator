@@ -54,6 +54,8 @@ class World:
         Ghost-halo width around every chunk in cells (default 1).
     biomes:
         Ordered biome table used to classify generated cells. First match wins.
+        Assigned ids are 1-based (first entry → 1); ``0`` is reserved for
+        unclassified cells.
     """
 
     __slots__ = (
@@ -111,14 +113,16 @@ class World:
         return tuple(self._biomes)
 
     def classify(self, altitude: float, temperature: float, humidity: float) -> int:
-        """Index of the first matching biome, else ``0`` (unclassified/default).
+        """1-based id of the first matching biome, else ``0`` (unclassified).
 
+        Biome ids are 1-based so the schema default ``0`` uniquely means "no
+        biome matched"; the first table entry is id 1, the second 2, etc.
         Reuses :meth:`Biome.matches`: inclusive-min / exclusive-max ranges,
         first match wins.
         """
         for i, biome in enumerate(self._biomes):
             if biome.matches(altitude, temperature, humidity):
-                return i
+                return i + 1
         return 0
 
     def classify_chunk(self, chunk: Chunk) -> np.ndarray:
@@ -139,7 +143,7 @@ class World:
         temperature: np.ndarray,
         humidity: np.ndarray,
     ) -> np.ndarray:
-        """First-match-wins classification into int64 ids (vectorised)."""
+        """First-match-wins classification into 1-based int64 ids; 0 = unclassified (vectorised)."""
         out = np.zeros(altitude.shape, dtype=np.int64)
         matched = np.zeros(altitude.shape, dtype=bool)
         for i, b in enumerate(self._biomes):
@@ -151,7 +155,7 @@ class World:
                 & (b.min_humidity <= humidity)
                 & (humidity < b.max_humidity)
             )
-            out[m] = i
+            out[m] = i + 1
             matched |= m
         return out
 
