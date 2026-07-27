@@ -17,8 +17,10 @@ long-running headless process.
   are scheduled as a dependency graph for deterministic, parallel execution.
 - **Event system.** Decoupled, queue-backed, tick-bounded publish/subscribe used
   by systems and plugins.
-- **Chunked world.** The world is a grid of fixed-size chunks generated
-  procedurally on demand, enabling a practically infinite map.
+- **Chunked world.** The world is a bounded grid of fixed-size chunks, all
+  generated up front at construction; v1 has no lazy or streaming generation.
+  On-demand and effectively-infinite generation is a deferred, later-phase
+  capability (see ADR-001).
 - **Mathematical-first.** Population dynamics, energy balance, disease,
   reproduction and selection are expressed as models/equations, not ad-hoc rules.
 - **Plugin host.** Climate, genetics, fire, disease, human activity, etc. are
