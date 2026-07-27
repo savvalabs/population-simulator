@@ -30,6 +30,10 @@ from .component import Component
 from .errors import SchedulerError
 
 if TYPE_CHECKING:
+    import numpy as np
+
+    from population_engine.core.time import Clock
+    from population_engine.world.world import World
     from .events import EventBus
     from .registry import Registry
 
@@ -38,16 +42,33 @@ __all__ = ["System", "SystemContext", "Scheduler"]
 
 @dataclass(frozen=True, slots=True)
 class SystemContext:
-    """Shared engine state passed to each system on :meth:`System.update`.
+    """The engine contract passed to each system on :meth:`System.update`.
 
-    In the ECS foundation slice this holds the :class:`Registry` and
-    :class:`EventBus`. When the engine integration subsystem lands it will be
-    extended with the simulation clock and the engine's deterministic RNG, so
-    systems can consume them without signature churn.
+    This is a **stable, closed interface**, not a service locator: it carries
+    exactly the dependencies the engine's tick phases consume — the
+    :class:`Registry` and :class:`EventBus` (ECS foundation) plus the
+    simulation :class:`Clock`, the engine's shared deterministic RNG, the
+    :class:`World`, and the data registry. Any future field must be justified
+    against the tick contract; ad-hoc dependencies do not belong here.
+
+    In the ECS foundation slice only ``registry`` and ``events`` are
+    populated. The engine integration slice (S0) additionally passes the
+    clock, rng and world; ``data`` remains ``None`` until the S1 data
+    subsystem lands. The ``None`` defaults keep the scheduler-test bare
+    constructions valid and avoid coupling ``ecs`` to ``core`` at runtime
+    (``Clock`` / ``World`` are imported under ``TYPE_CHECKING`` only).
     """
 
     registry: "Registry"
     events: "EventBus"
+    clock: "Clock | None" = None
+    rng: "np.random.Generator | None" = None
+    world: "World | None" = None
+    # Forward ref: ``DataRegistry`` is defined in the S1 data subsystem. The
+    # annotation is a string (never resolved at runtime under
+    # ``from __future__ import annotations``), so the name stays unresolved
+    # until S1 — intentionally, so this slot is part of the contract now.
+    data: "DataRegistry | None" = None
 
 
 class System:
