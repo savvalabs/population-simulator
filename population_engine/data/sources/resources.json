@@ -1,0 +1,1 @@
+[{"id": "water", "name": "Water", "max_amount": 100, "regeneration_rate": 0.2, "nutritional_value": 0, "toxicity": 0, "season_effect": {"rainy": 1.5, "dry": 0.4}}, {"id": "carrion", "name": "Carrion", "max_amount": 50, "regeneration_rate": 0.01, "nutritional_value": 30, "toxicity": 0.05, "season_effect": {"dry": 0.8, "rainy": 1.2}}]
