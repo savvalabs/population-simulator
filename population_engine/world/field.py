@@ -39,6 +39,7 @@ FIELD_SCHEMA: tuple[FieldSpec, ...] = (
     FieldSpec("altitude", np.dtype(np.float64), 0.0),      # metres above sea level
     FieldSpec("temperature", np.dtype(np.float64), 25.0),   # degrees Celsius
     FieldSpec("humidity", np.dtype(np.float64), 0.5),       # 0..1 relative
+    FieldSpec("precipitation", np.dtype(np.float64), 0.0),   # mm-equivalent rate (S3.1)
     FieldSpec("biome_id", np.dtype(np.int64), 0),            # 0 = unclassified
 )
 

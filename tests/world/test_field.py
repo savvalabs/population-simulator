@@ -148,12 +148,19 @@ def test_field_halo_width_2() -> None:
 
 def test_field_schema_canonical() -> None:
     assert DEFAULT_HALO == 1
-    assert FIELD_NAMES == ("altitude", "temperature", "humidity", "biome_id")
+    assert FIELD_NAMES == (
+        "altitude", "temperature", "humidity", "precipitation", "biome_id",
+    )
     names = [spec.name for spec in FIELD_SCHEMA]
-    assert names == ["altitude", "temperature", "humidity", "biome_id"]
+    assert names == [
+        "altitude", "temperature", "humidity", "precipitation", "biome_id",
+    ]
     biome_spec = [s for s in FIELD_SCHEMA if s.name == "biome_id"][0]
     assert biome_spec.dtype == np.dtype(np.int64)
     assert biome_spec.default == 0
     temp_spec = [s for s in FIELD_SCHEMA if s.name == "temperature"][0]
     assert temp_spec.dtype == np.dtype(np.float64)
     assert temp_spec.default == 25.0
+    precip_spec = [s for s in FIELD_SCHEMA if s.name == "precipitation"][0]
+    assert precip_spec.dtype == np.dtype(np.float64)
+    assert precip_spec.default == 0.0

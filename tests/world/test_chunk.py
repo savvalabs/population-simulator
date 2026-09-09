@@ -63,6 +63,7 @@ def test_chunk_fields_always_present_from_schema() -> None:
     assert np.all(c.field("altitude").interior == 0.0)
     assert np.all(c.field("temperature").interior == 25.0)
     assert np.all(c.field("humidity").interior == 0.5)
+    assert np.all(c.field("precipitation").interior == 0.0)
     assert np.all(c.field("biome_id").interior == 0)
 
 

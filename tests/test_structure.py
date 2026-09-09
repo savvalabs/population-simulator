@@ -18,6 +18,7 @@ EXPECTED_SUBPACKAGES = (
     "core",
     "ecs",
     "world",
+    "models",
     "systems",
     "plugins",
     "data",

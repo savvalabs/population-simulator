@@ -125,7 +125,10 @@ def test_same_seed_equal_interiors() -> None:
         for ix in range(2):
             c1 = w1.chunk(ChunkCoord(ix, iy))
             c2 = w2.chunk(ChunkCoord(ix, iy))
-            for name in ("altitude", "temperature", "humidity", "biome_id"):
+            for name in (
+                "altitude", "temperature", "humidity",
+                "precipitation", "biome_id",
+            ):
                 assert np.array_equal(
                     c1.field(name).interior,
                     c2.field(name).interior,
