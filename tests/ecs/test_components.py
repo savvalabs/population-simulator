@@ -123,8 +123,13 @@ def _example_value(f) -> object:
     # floats
     if name in {"hunger", "thirst", "energy", "hp",
                 "distance_this_tick", "temperature", "humidity",
-                "biomass", "water"}:
+                "precipitation", "biomass", "water",
+                "camouflage", "cold_resistance", "speed",
+                "mutation_rate"}:
         return 3.5
+    # dicts
+    if name == "genes":
+        return {"fur_color": "brown", "fur_thickness": 7, "leg_length": 8}
     # strings
     if name == "species_id":
         return "jaguar"

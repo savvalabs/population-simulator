@@ -31,7 +31,7 @@ layer's authored labels.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .component import Component
 from .entity import Entity
@@ -46,6 +46,9 @@ __all__ = [
     "Diet",
     "MovementLog",
     "CellExposure",
+    "GenomeComponent",
+    "PhenotypeComponent",
+    "EnergyComponent",
 ]
 
 
@@ -161,7 +164,57 @@ class CellExposure(Component):
 
     temperature: float = 0.0
     humidity: float = 0.0
+    precipitation: float = 0.0
     biomass: float = 0.0
     water: float = 0.0
     # Placeholder: 0 is not a valid biome id; ExposureSystem sets it each tick.
     biome_id: int = 0
+
+
+@dataclass
+class GenomeComponent(Component):
+    """Heritable genetic payload (the ADN), decoupled from physical stats.
+
+    ``GeneticsSystem`` expresses these genes into a :class:`PhenotypeComponent`
+    each tick; mutations alter ``genes`` (at ``mutation_rate`` probability)
+    without ever touching the phenotype directly, so the phenotype is always
+    a *derived* projection of the genome.
+
+    ``genes`` maps a gene name to its base value; it must use a
+    ``default_factory`` (never a shared mutable class-level default).
+    """
+
+    genes: dict = field(
+        default_factory=lambda: {
+            "fur_color": "white",
+            "fur_thickness": 5,
+            "leg_length": 5,
+        }
+    )
+    mutation_rate: float = 0.05
+
+
+@dataclass
+class PhenotypeComponent(Component):
+    """Physical stats expressed from the genome by ``GeneticsSystem``.
+
+    All-zero is a construction placeholder; this component carries no
+    authority of its own — it is recomputed from :class:`GenomeComponent`
+    every tick and must never be hand-edited by other systems.
+    """
+
+    camouflage: float = 0.0
+    cold_resistance: float = 0.0
+    speed: float = 0.0
+
+
+@dataclass
+class EnergyComponent(Component):
+    """Energy budget for movement/metabolism bookkeeping.
+
+    ``current_energy`` is clamped to ``[0, max_energy]`` by the consuming
+    systems (never here — components hold no behaviour).
+    """
+
+    current_energy: int = 100
+    max_energy: int = 100
