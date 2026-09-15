@@ -125,6 +125,16 @@ class UniformBiomeProvider:
         self._bh = float(base_humidity)
         self._bp = float(base_precipitation)
 
+    @property
+    def base_temperature(self) -> float:
+        return self._bt
+
+    @base_temperature.setter
+    def base_temperature(self, value: float) -> None:
+        """Public setter so clients (UI toggles, scenarios) can force the
+        base temperature between ticks without touching the private field."""
+        self._bt = float(value)
+
     def base_values(self, altitude: np.ndarray) -> "BiomeBaseValues":
         shape = altitude.shape
         return BiomeBaseValues(
