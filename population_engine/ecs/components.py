@@ -218,3 +218,7 @@ class EnergyComponent(Component):
 
     current_energy: int = 100
     max_energy: int = 100
+    # Causa del último daño recibido (para logging de extinción). No es
+    # parte de la física — es una etiqueta diagnóstica escrita por quien daña
+    # y leída por DeathSystem al recolectar.
+    last_damage_source: str = ""

@@ -56,3 +56,4 @@ class EnvironmentPressureSystem(System):
             if cell_temp < min_tolerable:
                 penalty = int(min_tolerable - cell_temp)
                 energy.current_energy -= penalty
+                energy.last_damage_source = "frío (adaptación insuficiente)"

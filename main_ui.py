@@ -31,6 +31,7 @@ from population_engine.ecs.components import (
     GenomeComponent,
     PhenotypeComponent,
     Position,
+    SpeciesRef,
 )
 from population_engine.ecs.enums import DietType
 from population_engine.ecs.events import EventBus
@@ -41,6 +42,10 @@ from population_engine.systems.death import DeathSystem
 from population_engine.systems.environment_exposure import ExposureSystem
 from population_engine.systems.environment_pressure import EnvironmentPressureSystem
 from population_engine.systems.genetics import GeneticsSystem
+from population_engine.systems.human_pressure import HumanPressureSystem
+from population_engine.systems.predators import ForagingSystem, PredatorSystem
+from population_engine.systems.reproduction import ReproductionSystem
+from population_engine.systems.resources import ResourceSystem
 from population_engine.world.world import World
 
 # -- Constantes de layout -----------------------------------------------------
@@ -164,7 +169,7 @@ class Button:
 # -- Motor: construcción y población ------------------------------------------
 
 
-def _build_engine() -> tuple[Engine, Registry, World, UniformBiomeProvider]:
+def _build_engine() -> tuple[Engine, Registry, World, UniformBiomeProvider, HumanPressureSystem]:
     """Cablea Engine + Registry + Scheduler + EventBus + World (S0-S3)."""
     registry = Registry()
     events = EventBus()
@@ -175,11 +180,30 @@ def _build_engine() -> tuple[Engine, Registry, World, UniformBiomeProvider]:
 
     scheduler = Scheduler()
     biome_provider = UniformBiomeProvider(base_temperature=NORMAL_BASE_TEMP)
+    human_pressure = HumanPressureSystem(world_size=WORLD_CELLS)
+    from population_engine.systems.species_env import SpeciesEnvSystem
+    species_env = SpeciesEnvSystem(world_size=WORLD_CELLS)
+    human_pressure.hunters = 0.4
+    human_pressure.noise = 0.2
+    human_pressure.contamination = 0.1
+    # Cadena completa: genética -> clima -> exposición -> recursos (biomasa)
+    # -> forrajeo (los ñeques comen) -> depredadores -> presión ambiental
+    # -> presión humana -> muerte/recolección.
     for system in (
         GeneticsSystem(),
         ClimateSystem(biome_provider=biome_provider),
         ExposureSystem(),
+        ResourceSystem(
+            deforestation_getter=human_pressure.deforestation_factor
+        ),
+        ForagingSystem(),
+        PredatorSystem(),
+        ReproductionSystem(
+            population_block=human_pressure.reproduction_suppressed,
+            space_getter=species_env.reproduction_factor,
+        ),
         EnvironmentPressureSystem(),
+        human_pressure,
         DeathSystem(),
     ):
         scheduler.add_system(system)
@@ -193,7 +217,12 @@ def _build_engine() -> tuple[Engine, Registry, World, UniformBiomeProvider]:
         world=world,
     )
     engine.start()
-    return engine, registry, world, biome_provider
+    # Biomasa inicial: pradera moderada para arrancar la cadena trófica.
+    from population_engine.world.coords import ChunkCoord
+    for iy in range(world.height_chunks):
+        for ix in range(world.width_chunks):
+            world.chunk(ChunkCoord(ix, iy)).field("biomass").interior[...] = 50.0
+    return engine, registry, world, biome_provider, human_pressure
 
 
 def _spawn_initial_population(engine: Engine, registry: Registry) -> None:
@@ -208,6 +237,7 @@ def _spawn_initial_population(engine: Engine, registry: Registry) -> None:
         y = int(rng.integers(0, WORLD_CELLS))
         registry.create_entity(
             Position(x=x, y=y),
+            SpeciesRef(species_id="neque"),
             GenomeComponent(),
             PhenotypeComponent(),
             EnergyComponent(),
@@ -223,6 +253,7 @@ def _spawn_predators(engine: Engine, registry: Registry) -> None:
         y = int(rng.integers(0, WORLD_CELLS))
         registry.create_entity(
             Position(x=x, y=y),
+            SpeciesRef(species_id="tigrillo"),
             GenomeComponent(),
             PhenotypeComponent(),
             EnergyComponent(current_energy=150, max_energy=150),
@@ -343,6 +374,7 @@ def _draw_viewport(
 
 def _handle_click(pos: tuple[int, int], state: UIState, buttons, engine: Engine,
                   registry: Registry, biome_provider: UniformBiomeProvider,
+                  human_pressure: HumanPressureSystem,
                   predators_spawned: list[bool]) -> None:
     # Botones de velocidad (no conmutan: fijan el valor activo).
     for speed, button in buttons["speed"].items():
@@ -357,6 +389,8 @@ def _handle_click(pos: tuple[int, int], state: UIState, buttons, engine: Engine,
         )
     elif buttons["predadores"].handle_click(pos):
         state.depredadores_activos = buttons["predadores"].toggled
+        # Activa la presión humana exógena (caza / ruido / contaminación).
+        human_pressure.active = state.depredadores_activos
         if state.depredadores_activos and not predators_spawned[0]:
             _spawn_predators(engine, registry)
             predators_spawned[0] = True
@@ -376,7 +410,7 @@ def main() -> None:
     buttons = _build_layout()
 
     # -- Motor real ---------------------------------------------------------
-    engine, registry, world, biome_provider = _build_engine()
+    engine, registry, world, biome_provider, human_pressure = _build_engine()
     _spawn_initial_population(engine, registry)
     predators_spawned = [False]
 
@@ -394,7 +428,7 @@ def main() -> None:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 _handle_click(
                     event.pos, state, buttons, engine, registry,
-                    biome_provider, predators_spawned,
+                    biome_provider, human_pressure, predators_spawned,
                 )
                 # Al cambiar de velocidad no hay "deuda" de ticks pendiente.
                 last_tick_ms = pygame.time.get_ticks()

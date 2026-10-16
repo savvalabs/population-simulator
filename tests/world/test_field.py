@@ -150,10 +150,12 @@ def test_field_schema_canonical() -> None:
     assert DEFAULT_HALO == 1
     assert FIELD_NAMES == (
         "altitude", "temperature", "humidity", "precipitation", "biome_id",
+        "biomass",
     )
     names = [spec.name for spec in FIELD_SCHEMA]
     assert names == [
         "altitude", "temperature", "humidity", "precipitation", "biome_id",
+        "biomass",
     ]
     biome_spec = [s for s in FIELD_SCHEMA if s.name == "biome_id"][0]
     assert biome_spec.dtype == np.dtype(np.int64)

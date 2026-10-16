@@ -41,6 +41,7 @@ FIELD_SCHEMA: tuple[FieldSpec, ...] = (
     FieldSpec("humidity", np.dtype(np.float64), 0.5),       # 0..1 relative
     FieldSpec("precipitation", np.dtype(np.float64), 0.0),   # mm-equivalent rate (S3.1)
     FieldSpec("biome_id", np.dtype(np.int64), 0),            # 0 = unclassified
+    FieldSpec("biomass", np.dtype(np.float64), 0.0),         # plant matter (ResourceSystem)
 )
 
 FIELD_NAMES: tuple[str, ...] = tuple(spec.name for spec in FIELD_SCHEMA)

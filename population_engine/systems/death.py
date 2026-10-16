@@ -21,10 +21,21 @@ only input is a component it does not write.
 
 from __future__ import annotations
 
-from ..ecs.components import EnergyComponent
+from dataclasses import dataclass
+
+from ..ecs.components import EnergyComponent, SpeciesRef
+from ..ecs.events import Event
 from ..ecs.scheduler import System, SystemContext
 
-__all__ = ["DeathSystem"]
+__all__ = ["DeathSystem", "EntityDied"]
+
+
+@dataclass
+class EntityDied(Event):
+    """Fired by DeathSystem for every entity it reaps, with its cause."""
+
+    species_id: str
+    cause: str
 
 
 class DeathSystem(System):
@@ -44,6 +55,7 @@ class DeathSystem(System):
 
     def update(self, ctx: SystemContext) -> None:
         registry = ctx.registry
+        events = ctx.events
         # Phase 1: collect — exhaust the query BEFORE any structural change.
         dead = [
             entity
@@ -52,4 +64,18 @@ class DeathSystem(System):
         ]
         # Phase 2: destroy — safe now; the query iterator is finished.
         for entity in dead:
+            sref = registry.get_component(entity, SpeciesRef)
+            en = registry.get_component(entity, EnergyComponent)
+            if events is not None:
+                cause = (
+                    en.last_damage_source
+                    if en is not None and en.last_damage_source
+                    else "causa desconocida"
+                )
+                events.publish(
+                    EntityDied(
+                        species_id=sref.species_id if sref is not None else "desconocida",
+                        cause=cause,
+                    )
+                )
             registry.destroy_entity(entity)

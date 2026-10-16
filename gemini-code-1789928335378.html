@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Population Simulator 2 - Final</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos base iOS y Glassmorphism */
+        body {
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            transition: background 0.4s ease;
+        }
+        body.dark-mode {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+        }
+        body.dark-mode .glass, body.dark-mode .glass-panel {
+            background: rgba(30, 41, 59, 0.55);
+            border-color: rgba(255,255,255,0.12);
+            color: #e2e8f0;
+        }
+        body.dark-mode .text-gray-800, body.dark-mode .text-gray-700,
+        body.dark-mode .text-gray-600, body.dark-mode .text-gray-500 { color: #cbd5e1; }
+        body.dark-mode .text-gray-400 { color: #94a3b8; }
+        body.dark-mode select, body.dark-mode input[type=number] {
+            background: #1e293b; color: #e2e8f0; border-color: #334155;
+        }
+        body.dark-mode #eco-log { background: rgba(2, 6, 23, 0.9); border-color: rgba(255,255,255,0.15); }
+        body.dark-mode #chart-wrapper, body.dark-mode #simulation-canvas {
+            background: rgba(15,23,42,0.45); border-color: rgba(255,255,255,0.1); }
+        /* Pastillas blancas (Año/velocidad, botones) en modo oscuro */
+        body.dark-mode .bg-white\/80, body.dark-mode .bg-white\/60,
+        body.dark-mode .bg-white\/50, body.dark-mode .bg-white\/40,
+        body.dark-mode .bg-white {
+            background-color: rgba(30, 41, 59, 0.85) !important;
+            color: #e2e8f0 !important;
+        }
+        body.dark-mode .hover\:bg-white:hover,
+        body.dark-mode .hover\:bg-gray-50:hover { background-color: #334155 !important; }
+        body.dark-mode button.text-red-600 { color: #fca5a5 !important; border-color: rgba(255,255,255,0.15); }
+        .glass {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .glass-panel { background: rgba(255, 255, 255, 0.7); }
+        
+        /* Segmented Control iOS (Clima) */
+        .segmented-control {
+            background: rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            padding: 2px;
+            display: flex;
+        }
+        .segment-btn {
+            flex: 1; text-align: center; padding: 4px 0; font-size: 13px;
+            border-radius: 6px; cursor: pointer; transition: all 0.2s ease; color: #4b5563;
+        }
+        .segment-btn.active {
+            background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; color: #111827;
+        }
+
+        /* Transiciones de Tarjetas */
+        .species-card { transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer; }
+        .species-card.active {
+            transform: scale(1.05) translateY(-5px);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            z-index: 10;
+        }
+        .species-details { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease; }
+        .species-card.active .species-details { max-height: 100px; opacity: 1; margin-top: 10px; }
+
+        /* Desplegable de Población */
+        .add-menu { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease; }
+        .add-menu.open { max-height: 200px; opacity: 1; margin-top: 8px; }
+
+        /* Sliders iOS */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
+            background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; margin-top: -8px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 6px; cursor: pointer; background: rgba(0,0,0,0.1); border-radius: 4px;
+        }
+
+        /* iOS Toggle Switch */
+        .toggle-checkbox:checked { right: 0; border-color: #34C759; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #34C759; }
+        .toggle-checkbox { right: 4px; z-index: 1; transition: all 0.3s; }
+        .toggle-label { width: 44px; height: 24px; background-color: #e5e7eb; border-radius: 9999px; transition: all 0.3s; }
+        .toggle-dot { top: 2px; left: 2px; width: 20px; height: 20px; background-color: white; border-radius: 50%; transition: all 0.3s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .toggle-checkbox:checked ~ .toggle-dot { transform: translateX(20px); }
+
+        /* Animación de Entidades Vivas */
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-4px) rotate(2deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+        .entity {
+            position: absolute;
+            font-size: 1.5rem;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.15));
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="p-4 flex flex-col gap-4 text-gray-800">
+
+    <!-- SECCIÓN SUPERIOR -->
+    <div class="flex flex-row gap-4 h-[60vh]">
+        
+        <!-- Pantalla de Simulación -->
+        <div class="glass flex-grow rounded-3xl flex flex-col p-4 overflow-hidden">
+            
+            <!-- Cabecera Superior (Sobre el contorno) -->
+            <div class="flex items-center justify-between w-full relative mb-3 h-10">
+                <!-- Etiqueta izquierda (Estado y velocidad) -->
+                <div class="bg-white/80 px-3 py-1.5 rounded-full text-xs font-bold text-gray-700 shadow-sm flex items-center gap-2">
+                    <span id="year-badge">Año 0</span>
+                    <span class="text-gray-300">|</span>
+                    <span class="text-blue-600 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                          <span id="sim-speed-badge">2 sem / 1s</span>
+                    </span>
+                </div>
+
+                <!-- Controles de Simulación (Centrados) -->
+                <div class="absolute left-1/2 transform -translate-x-1/2 flex gap-2 p-1 bg-white/60 backdrop-blur-md border border-white/80 rounded-full shadow-sm">
+                    <button id="btnStart" onclick="startSimulation()" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 py-1.5 text-sm font-bold transition-colors shadow flex items-center gap-2">
+                        ▶ Iniciar
+                    </button>
+                    <button id="btnPause" onclick="pauseSimulation()" class="bg-amber-500 hover:bg-amber-600 text-white rounded-full px-5 py-1.5 text-sm font-bold transition-colors shadow flex items-center gap-2">
+                        ⏸ Pausar
+                    </button>
+                    <button onclick="resetSimulation()" class="bg-white hover:bg-gray-50 text-red-600 rounded-full px-4 py-1.5 text-sm font-bold transition-colors shadow-sm flex items-center gap-2 border border-red-100">
+                        🔄 Reiniciar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Lienzo donde se dibuja el ecosistema (biomasa + fauna en Canvas) -->
+            <div id="simulation-canvas" class="flex-grow w-full relative overflow-hidden rounded-2xl bg-white/20">
+                <canvas id="eco-canvas" class="absolute inset-0 w-full h-full"></canvas>
+                <!-- Leyenda de conteo en vivo (siempre visible) -->
+                <div id="eco-legend" class="absolute top-2 left-2 z-10 bg-gray-900/75 text-white text-[11px] font-semibold rounded-xl px-3 py-2 leading-relaxed pointer-events-none"></div>
+                <div id="entity-tooltip" class="absolute hidden pointer-events-none bg-gray-900/90 text-white text-xs font-semibold px-2 py-1 rounded-lg shadow-lg z-20 whitespace-nowrap"></div>
+            </div>
+        </div>
+
+        <!-- Panel Lateral Derecho (Controles) -->
+        <div class="glass w-80 rounded-3xl p-5 flex flex-col gap-5 overflow-y-auto">
+            
+            <!-- Gestión de Población -->
+            <div class="bg-white/40 p-3 rounded-2xl border border-white/60">
+                <button onclick="toggleAddMenu()" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl py-2 font-semibold text-sm transition-colors flex justify-center items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Gestión de Población
+                </button>
+                
+                <div id="addMenu" class="add-menu flex flex-col gap-2">
+                    <select id="speciesSelect" class="w-full p-2 mt-1 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="neques">Ñeques</option>
+                        <option value="tigrillos">Tigrillos</option>
+                        <option value="aguilas">Águilas</option>
+                        <option value="cazadores">Cazadores</option>
+                        <option value="pajaritos">Pajaritos</option>
+                    </select>
+                    <input type="number" id="qtyInput" placeholder="Cantidad (ej. 10)" min="1" class="w-full p-2 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    
+                    <div class="flex gap-2 mt-1">
+                        <button onclick="modifyPopulation('add')" class="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-lg py-1.5 text-sm font-bold transition-colors">+ Agregar</button>
+                        <button onclick="modifyPopulation('remove')" class="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-lg py-1.5 text-sm font-bold transition-colors">- Quitar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clima Global -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Clima Global</h3>
+                <div class="segmented-control">
+                    <div class="segment-btn active" data-climate="normal" onclick="setClimate('normal')">Normal</div>
+                    <div class="segment-btn" data-climate="sequia" onclick="setClimate('sequia')">Sequía</div>
+                    <div class="segment-btn" data-climate="lluvia" onclick="setClimate('lluvia')">Lluvia</div>
+                    <div class="segment-btn" data-climate="caos" onclick="setClimate('caos')">Caos</div>
+                </div>
+            </div>
+
+            <!-- Variables de Entorno POR ESPECIE -->
+            <div class="flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Entorno por Especie</h3>
+                    <span class="text-[10px] font-bold text-gray-500 uppercase">Esp: <span id="current-species-name">Ñeques</span></span>
+                </div>
+
+                <!-- Selector de especie a configurar -->
+                <select id="speciesEnvSelect" onchange="onSpeciesEnvChange()" class="w-full p-2 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="neque">🐿️ Ñeques (herbívoros)</option>
+                    <option value="tigrillo">🐆 Tigrillos (depredadores)</option>
+                    <option value="aguila">🦅 Águilas (depredador aéreo)</option>
+                    <option value="pajarito">🐦 Pajaritos (presa aérea)</option>
+                </select>
+
+                <!-- Sliders por especie (los carnívoros no tienen 'comida' ni 'hábitat') -->
+                <div id="species-env-sliders" class="flex flex-col gap-3"></div>
+            </div>
+
+            <!-- Presión Humana: 7 palancas 0..1 -->
+            <div class="pt-3 border-t border-gray-300/40">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Presión Humana</h3>
+                    <label class="flex items-center cursor-pointer relative" title="Master ON/OFF de la presión humana">
+                        <span class="mr-2 text-[10px] font-bold text-gray-500 uppercase" id="hpText">OFF</span>
+                        <div class="relative">
+                            <input type="checkbox" id="hpToggle" class="toggle-checkbox absolute opacity-0 w-0 h-0" onchange="onHumanToggle()">
+                            <div class="toggle-label block"></div>
+                            <div class="toggle-dot absolute"></div>
+                        </div>
+                    </label>
+                </div>
+                <div class="flex flex-col gap-2" id="hp-sliders">
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Urbanización</span><span id="val-urbanization">0.00</span></div>
+                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="urbanization" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Deforestación</span><span id="val-food_scarcity">0.00</span></div>
+                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="food_scarcity" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Contaminación</span><span id="val-contamination">0.00</span></div>
+                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="contamination" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Cazadores</span><span id="val-hunters">0.00</span></div>
+                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="hunters" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Ruido / Turismo</span><span id="val-noise">0.00</span></div>
+                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="noise" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Carreteras</span><span id="val-roads">0.00</span></div>
+                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="roads" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Mascotas ferales</span><span id="val-invasive">0.00</span></div>
+                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="invasive" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Ecológico (terminal) -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Log Ecológico</h3>
+                <div id="eco-log" class="bg-gray-900/80 text-green-300 font-mono text-[11px] rounded-xl p-2 h-28 overflow-y-auto flex flex-col gap-0.5 border border-white/30"></div>
+            </div>
+
+            <!-- Velocidad del Tiempo -->
+            <div class="pt-3 border-t border-gray-300/40 mt-auto">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Velocidad del Tiempo</h3>
+                <div>
+                    <div class="flex justify-between text-xs mb-1 text-gray-600 font-medium">
+                        <span>Semanas por segundo</span>
+                        <span id="val-tiempo" class="font-bold text-blue-600">2</span>
+                    </div>
+                    <input type="range" min="1" max="20" value="2" oninput="updateTimeText(this.value)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN INFERIOR (Dashboard) -->
+    <div class="glass flex-grow rounded-3xl p-4 flex flex-col overflow-y-auto overflow-x-hidden" style="min-height: 0;">
+            <div class="flex gap-6 border-b border-gray-300/50 pb-2 mb-4 px-2">
+            <button id="tab-grafica" onclick="switchTab('grafica')" class="text-blue-600 font-bold border-b-2 border-blue-600 pb-1 text-sm">Gráfica</button>
+            <button id="tab-generaciones" onclick="switchTab('generaciones')" class="text-gray-500 hover:text-gray-800 font-medium pb-1 transition-colors text-sm">Generaciones</button>
+            <button id="tab-historial" onclick="switchTab('historial')" class="text-gray-500 hover:text-gray-800 font-medium pb-1 transition-colors text-sm">Historial Ecosistema</button>
+            
+                <div class="ml-auto flex items-center gap-2">
+                <div class="text-xs font-bold text-gray-500 bg-white/50 px-3 py-1 rounded-full">
+                    Vista: <span id="graph-status" class="text-blue-600">Esperando Especies</span>
+                </div>
+                <button id="theme-toggle" onclick="toggleTheme()" title="Cambiar a modo oscuro/claro"
+                        class="bg-white/60 hover:bg-white text-gray-700 rounded-full px-3 py-1 text-sm shadow-sm border border-white/60 transition-colors">
+                    🌙
+                </button>
+            </div>
+        </div>
+
+        <div id="chart-wrapper" class="rounded-xl bg-white/40 mb-4 flex items-center justify-center border border-white/50 shadow-inner relative overflow-hidden" style="height: 260px; flex-shrink: 0;">
+            <div id="chart-scroll" class="absolute inset-0 overflow-x-auto overflow-y-hidden">
+                <canvas id="chart-canvas" class="hidden h-full"></canvas>
+            </div>
+            <div id="tab-content" class="absolute inset-0 overflow-y-auto p-4 hidden text-xs text-gray-600"></div>
+            <p id="chart-placeholder" class="text-gray-400 font-medium text-sm absolute inset-0 flex items-center justify-center pointer-events-none">
+                [ Gráfica inactiva - Esperando individuos ]
+            </p>
+        </div>
+
+        <!-- Tarjetas de Especies (siempre visibles) -->
+        <div class="flex gap-4 justify-start flex-wrap" id="cards-container">
+            <div id="card-neques" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Ñeques')">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2"><span class="text-2xl">🐿️</span><h4 class="font-bold text-gray-800">Ñeques</h4></div>
+                    <span id="count-neques" class="text-xl font-black text-green-600">0</span>
+                </div>
+                <canvas id="card-chart-neques" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
+                <p id="note-neques" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
+            </div>
+
+            <div id="card-tigrillos" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Tigrillos')">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2"><span class="text-2xl">🐆</span><h4 class="font-bold text-gray-800">Tigrillos</h4></div>
+                    <span id="count-tigrillos" class="text-xl font-black text-orange-500">0</span>
+                </div>
+                <canvas id="card-chart-tigrillos" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
+                <p id="note-tigrillos" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
+            </div>
+
+            <div id="card-feral" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Ferales')">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2"><span class="text-2xl">🐕</span><h4 class="font-bold text-gray-800">Ferales</h4></div>
+                    <span id="count-feral" class="text-xl font-black text-red-600">0</span>
+                </div>
+                <canvas id="card-chart-feral" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
+                <p id="note-feral" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
+            </div>
+
+            <div id="card-aguilas" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Águilas')">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2"><span class="text-2xl">🦅</span><h4 class="font-bold text-gray-800">Águilas</h4></div>
+                    <span id="count-aguilas" class="text-xl font-black text-orange-500">0</span>
+                </div>
+                <canvas id="card-chart-aguilas" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
+                <p id="note-aguilas" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
+            </div>
+
+            <div id="card-cazadores" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Cazadores')">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2"><span class="text-2xl">🧍🏽‍♂️</span><h4 class="font-bold text-gray-800">Cazadores</h4></div>
+                    <span id="count-cazadores" class="text-xl font-black text-red-600">0</span>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-1 leading-tight">Cazan ñeques y tigrillos (trampas/escopetas)</p>
+                <canvas id="card-chart-cazadores" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
+                <p id="note-cazadores" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
+            </div>
+
+            <div id="card-pajaritos" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Pajaritos')">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2"><span class="text-2xl">🐦</span><h4 class="font-bold text-gray-800">Pajaritos</h4></div>
+                    <span id="count-pajaritos" class="text-xl font-black text-blue-500">0</span>
+                </div>
+                <canvas id="card-chart-pajaritos" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
+                <p id="note-pajaritos" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        //  VARIABLES GLOBALES DE ESTADO
+        // ================================================================
+        const SPECIES = ['neques', 'tigrillos', 'aguilas', 'feral', 'cazadores', 'pajaritos'];
+        const emojisMap = { neques: '🐿️', tigrillos: '🐆', aguilas: '🦅', feral: '🐕', cazadores: '🧍🏽‍♂️', pajaritos: '🐦' };
+        const namesMap  = { neques: 'Ñeques', tigrillos: 'Tigrillos', aguilas: 'Águilas', feral: 'Ferales', cazadores: 'Cazadores', pajaritos: 'Pajaritos' };
+        const colorMap  = { neques: '#16a34a', tigrillos: '#f97316', aguilas: '#ea580c', feral: '#dc2626', cazadores: '#6b7280', pajaritos: '#3b82f6' };
+        // Presas que caza cada especie depredadora
+        const preyMap   = { tigrillos: ['neques', 'pajaritos'], aguilas: ['neques', 'pajaritos'], cazadores: SPECIES };
+
+        let selecciones = [];                    // tarjetas activas (filtros de gráfica)
+        let populations = { neques: 0, tigrillos: 0, aguilas: 0, feral: 0, cazadores: 0, pajaritos: 0 };
+        let entities    = { neques: [], tigrillos: [], aguilas: [], feral: [], cazadores: [], pajaritos: [] };
+        let extinctCause = {};   // sp -> causa de extinción (persistente hasta reset)
+
+        // Entorno (sliders 1-10)
+        let envVars = { comida: 7, espacio: 8, contaminacion: 2, enfermedades: 1 };
+        let isDynamic = false;                   // toggle Estático/Dinámico
+        let climateMode = 'lluvia';              // 'sequia' | 'lluvia' | 'caos'
+
+        // Tiempo de la simulación (1 tick = 1 semana; 52 semanas = 1 año)
+        let week = 0;
+        let generation = 0;                      // 1 generación = 52 semanas
+        let simRunning = false;
+        let hpActive = false;                    // master toggle Presión Humana
+        let weekPerSec = 2;                      // slider de velocidad: semanas por segundo
+        let simTimer = null;
+
+        // Historial para la gráfica
+        let history = { neques: [], tigrillos: [], aguilas: [], feral: [], cazadores: [], pajaritos: [] };
+        let historyLog = [];                     // eventos del ecosistema
+        let generationLog = [];                  // resumen por generación
+
+        const WEEKS_PER_GENERATION = 52;
+
+        // ================================================================
+        //  BUCLE DE SIMULACIÓN — conectado al Engine Python vía HTTP
+        // ================================================================
+        async function api(path, data) {
+            const res = await fetch(path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data || {})
+            });
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
+        }
+
+        let _lastHistoryWeek = -1;  // última semana que añadió punto al historial
+
+        // Recibe el snapshot real del Engine y actualiza toda la UI.
+        function applySnapshot(snap) {
+            latestSnapshot = snap;
+            markDirty();            // repaint de la vista congelada si estamos en pausa
+            week = snap.week;
+            generation = snap.generation;
+            // Solo registrar un punto nuevo cuando la semana avanza.
+            // Si la semana es la misma, sustituir el punto (corrige el bug de
+            // "gráfica creciente sin tiempo transcurrido").
+            const isNewWeek = snap.week !== _lastHistoryWeek;
+            if (isNewWeek) _lastHistoryWeek = snap.week;
+            for (const sp of SPECIES) {
+                const prev = populations[sp];
+                populations[sp] = snap.populations[sp];
+                if (isNewWeek) {
+                    history[sp].push(populations[sp]);
+                    if (history[sp].length > 200) history[sp].shift();
+                } else if (history[sp].length > 0) {
+                    history[sp][history[sp].length - 1] = populations[sp];
+                }
+                if (prev > 0 && populations[sp] === 0) {
+                    // La tarjeta queda visible tras extinción, con la causa.
+                    // La causa llega por el log del servidor en esta misma snapshot.
+                }
+            }
+            if (snap.log && snap.log.length) {
+                for (const msg of snap.log.slice(-5)) {
+                    logEvent(msg, 'info');
+                    // Extraer causa de extinción del log del motor.
+                    const m = msg.match(/Extinción de (\w+): causa dominante = (.+)/);
+                    if (m) extinctCause[m[1]] = m[2];
+                }
+            }
+            if (snap.entities) entities = snap.entities;     // posiciones del Engine
+            updateCounts();
+            updateClockBadge();
+            drawChart();
+            for (const sp of SPECIES) drawCardChart(sp);
+            updateEcoLegend();
+            checkActiveSpecies();
+            syncEnvLabelsFromLevers(snap.levers);
+        }
+
+        // Slider -> estado local (sin API, eso lo hace onchange)
+        const leverValues = {
+            urbanization: 0, food_scarcity: 0, contamination: 0,
+            hunters: 0, noise: 0, roads: 0, invasive: 0,
+        };
+        function onLeverInput(slider) {
+            const lever = slider.dataset.lever;
+            leverValues[lever] = parseFloat(slider.value);
+            const lbl = document.getElementById(`val-${lever}`);
+            if (lbl) lbl.innerText = slider.value;
+        }
+
+        // 7 valores -> POST al Engine. async: no bloquea el render.
+        async function pushHumanPressure() {
+            try {
+                await api('/api/human_pressure', { ...leverValues });
+            } catch (e) { console.error('human_pressure', e); }
+        }
+
+        // Master toggle Presión Humana
+        async function onHumanToggle() {
+            const on = document.getElementById('hpToggle').checked;
+            document.getElementById('hpText').innerText = on ? 'ON' : 'OFF';
+            hpActive = on;
+            try { await api('/api/human_pressure', { active: on }); }
+            catch (e) { console.error('toggle hp', e); }
+        }
+
+        // Si el servidor lleva las palancas (p.ej. tras reset), sincroniza la UI.
+        function syncEnvLabelsFromLevers(levers) {
+            if (!levers) return;
+            for (const key in leverValues) {
+                if (key in levers) {
+                    leverValues[key] = levers[key];
+                    const s = document.querySelector(`#hp-sliders input[data-lever="${key}"]`);
+                    const lbl = document.getElementById(`val-${key}`);
+                    if (s) s.value = levers[key];
+                    if (lbl) lbl.innerText = Number(levers[key]).toFixed(2);
+                }
+            }
+        }
+
+        // ÚNICA definición de logEvent (antes estaba duplicada y la segunda
+        // silenciaba todo el log en pantalla).
+        function logEvent(msg, type = 'info') {
+            historyLog.push(msg);
+            if (historyLog.length > 100) historyLog.shift();
+            const log = document.getElementById('eco-log');
+            const line = document.createElement('div');
+            const stamp = `[S${String(week).padStart(3, '0')}]`;
+            line.innerText = `${stamp} ${msg}`;
+            line.className = type === 'death' ? 'text-red-400'
+                            : type === 'warn'  ? 'text-amber-300'
+                            : type === 'good'  ? 'text-emerald-300'
+                            : 'text-green-300/90';
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function startSimulation() {
+            if (simRunning) return;
+            simRunning = true;
+            document.getElementById('btnStart').classList.add('opacity-50');
+            document.getElementById('btnPause').classList.remove('opacity-50');
+            const badge = document.getElementById('sim-speed-badge');
+            badge.classList.remove('text-red-600');
+            badge.classList.add('text-blue-600');
+            markDirty();
+            scheduleTick();
+            logEvent('Simulación iniciada', 'good');
+        }
+
+        function pauseSimulation() {
+            if (!simRunning) return;      // idempotente: sin efecto visual
+            simRunning = false;
+            if (simTimer !== null) { clearTimeout(simTimer); simTimer = null; }
+            document.getElementById('btnStart').classList.remove('opacity-50');
+            document.getElementById('btnPause').classList.add('opacity-50');
+            const badge = document.getElementById('sim-speed-badge');
+            badge.classList.remove('text-blue-600');
+            badge.classList.add('text-red-600');
+            markDirty();
+            logEvent('Simulación pausada', 'warn');
+        }
+
+        let tickInFlight = false;   // bandera anti-acumulación de fetches
+
+        function scheduleTick() {
+            // Detiene cualquier temporizador previo (lo usa también pause)
+            if (simTimer !== null) { clearTimeout(simTimer); simTimer = null; }
+            const intervalMs = 1000 / weekPerSec; // N semanas cada segundo
+
+            async function loop() {
+                if (!simRunning) return;              // la pausa detiene el loop
+                if (tickInFlight) {                   // fetch previo sin resolver:
+                    simTimer = setTimeout(loop, 50);  //   reintenta pronto, sin apilar
+                    return;
+                }
+                tickInFlight = true;
+                try {
+                    applySnapshot(await api('/api/tick'));
+                } catch (e) {
+                    console.error('tick error', e);
+                } finally {
+                    tickInFlight = false;             // SIEMPRE libera la bandera
+                }
+                if (simRunning) simTimer = setTimeout(loop, intervalMs);
+            }
+            simTimer = setTimeout(loop, intervalMs);
+        }
+
+        // ================================================================
+        //  MODELO POBLACIONAL
+        //  (Movido al servidor: population_engine corre el ECS real.
+        //  El navegador solo dibuja snapshots — ver applySnapshot/api.)
+        // ================================================================
+
+        // ================================================================
+        //  CONTROLES: clima, entorno, tiempo
+        // ================================================================
+        function setClimate(mode) {
+            climateMode = mode;
+            document.querySelectorAll('.segment-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.climate === mode);
+            });
+            api('/api/climate', { mode }).then(applySnapshot).catch(console.error);
+        }
+
+        // ================================================================
+        //  ENTORNO POR ESPECIE — config específica (tigrillo sin 'comida')
+        // ================================================================
+        const SPECIES_ENV_SCHEMA = {
+            neque: {
+                name: 'Ñeques',
+                levers: ['comida', 'espacio', 'contaminacion', 'enfermedades'],
+            },
+            tigrillo: {
+                name: 'Tigrillos',
+                levers: ['espacio', 'contaminacion', 'enfermedades'],   // sin comida: cazan
+            },
+            aguila: {
+                name: 'Águilas',
+                levers: ['espacio', 'contaminacion', 'enfermedades'],   // cazan desde el aire
+            },
+            pajarito: {
+                name: 'Pajaritos',
+                levers: ['comida', 'espacio', 'contaminacion', 'enfermedades'],
+            },
+        };
+        const SPECIES_ENV_LABELS = {
+            comida: 'Comida (biomasa/plantas)',
+            espacio: 'Espacio (habitat)',
+            contaminacion: 'Contaminación',
+            enfermedades: 'Enfermedades',
+        };
+        const SPECIES_ENV_KEY = { comida: 'food', espacio: 'space', contaminacion: 'contamination', enfermedades: 'disease' };
+
+        let speciesEnvValues = {
+            neque: { comida: 7, espacio: 8, contaminacion: 0, enfermedades: 0 },
+            tigrillo: { comida: 0, espacio: 8, contaminacion: 0, enfermedades: 0 },
+            aguila: { comida: 0, espacio: 8, contaminacion: 0, enfermedades: 0 },
+            pajarito: { comida: 6, espacio: 8, contaminacion: 0, enfermedades: 0 },
+            feral: { comida: 0, espacio: 8, contaminacion: 0, enfermedades: 0 },
+            cazador: { comida: 0, espacio: 5, contaminacion: 0, enfermedades: 0 },
+        };
+
+        function onSpeciesEnvChange() {
+            const sel = document.getElementById('speciesEnvSelect');
+            const sid = sel.value;
+            document.getElementById('current-species-name').innerText = SPECIES_ENV_SCHEMA[sid].name;
+            renderSpeciesEnvSliders(sid);
+        }
+
+        function renderSpeciesEnvSliders(sid) {
+            const container = document.getElementById('species-env-sliders');
+            const schema = SPECIES_ENV_SCHEMA[sid];
+            const vals = speciesEnvValues[sid];
+            container.innerHTML = '';
+            for (const lever of schema.levers) {
+                const id = `spenv-${sid}-${lever}`;
+                const val = vals[lever];
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `
+                    <div class="flex justify-between text-xs mb-1 text-gray-600 font-medium">
+                        <span>${SPECIES_ENV_LABELS[lever]}</span>
+                        <span id="val-${id}">${val}</span>
+                    </div>
+                    <input type="range" id="${id}" min="0" max="10" value="${val}"
+                           oninput="onSpeciesEnvSlider('${sid}', '${lever}', this.value)"
+                           onchange="pushSpeciesEnv('${sid}')">
+                `;
+                container.appendChild(wrapper);
+            }
+        }
+
+        function onSpeciesEnvSlider(sid, lever, v) {
+            speciesEnvValues[sid][lever] = parseInt(v);
+            const lbl = document.getElementById(`val-spenv-${sid}-${lever}`);
+            if (lbl) lbl.innerText = v;
+        }
+
+        async function pushSpeciesEnv(sid) {
+            const vals = speciesEnvValues[sid];
+            const payload = { species: sid, values: {} };
+            for (const lever of SPECIES_ENV_SCHEMA[sid].levers) {
+                payload.values[SPECIES_ENV_KEY[lever]] = vals[lever];
+            }
+            try { await api('/api/species_env', payload); }
+            catch (e) { console.error('species_env', e); }
+        }
+
+        // Inicializar el panel por especie al cargar
+        onSpeciesEnvChange();
+
+        // Compatibilidad: el slider global de entorno ya no existe, pero el
+        // endpoint sigue; estas funciones quedan vacías para no romper.
+        function setEnvVar(key, value) {}
+
+        function updateToggleText() {
+            const toggle = document.getElementById('dynamicToggle');
+            const text = document.getElementById('toggleText');
+            isDynamic = toggle.checked;
+            if (isDynamic) {
+                text.innerText = "Dinámico";
+                text.classList.replace("text-gray-500", "text-green-600");
+            } else {
+                text.innerText = "Estático";
+                text.classList.replace("text-green-600", "text-gray-500");
+            }
+        }
+
+        function updateTimeText(val) {
+            weekPerSec = parseInt(val);
+            document.getElementById('val-tiempo').innerText = val;
+            document.getElementById('sim-speed-badge').innerText = val + " sem / 1s";
+            if (simRunning) scheduleTick(); // ajusta el intervalo en caliente
+        }
+
+        function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+
+        // ================================================================
+        //  LEYENDA DE CONTEO EN EL VISOR (siempre visible)
+        // ================================================================
+        function updateEcoLegend() {
+            const el = document.getElementById('eco-legend');
+            if (!el) return;
+            const parts = [];
+            for (const sp of SPECIES) {
+                if (!populations[sp]) continue;
+                parts.push(`${emojisMap[sp]} ${populations[sp]}`);
+            }
+            el.innerHTML = parts.length ? parts.join(' &nbsp;·&nbsp; ') : 'ecosistema vacío';
+        }
+
+        // ================================================================
+        //  RELOJ / BADGES
+        // ================================================================
+        function updateClockBadge() {
+            const year = Math.floor(week / WEEKS_PER_GENERATION);
+            document.getElementById('year-badge').innerText =
+                `Año ${year} · Sem ${week} · Gen ${generation}`;
+        }
+
+        // ================================================================
+        //  GESTIÓN DE POBLACIÓN (Agregar / Quitar)
+        // ================================================================
+        function toggleAddMenu() {
+            document.getElementById('addMenu').classList.toggle('open');
+        }
+
+        async function modifyPopulation(action) {
+            const species = document.getElementById('speciesSelect').value;
+            const qty = parseInt(document.getElementById('qtyInput').value);
+            if (isNaN(qty) || qty <= 0) return;
+            try {
+                applySnapshot(await api('/api/population', { species, action, qty }));
+            } catch (e) { console.error('population error', e); }
+            document.getElementById('qtyInput').value = '';
+            toggleAddMenu();
+        }
+
+        // Añade posiciones persistentes para nuevos individuos (máx 50 visuales)
+        function spawnEntities(species, qty) {
+            const list = entities[species];
+            while (list.length < Math.min(populations[species], 50) && qty > 0) {
+                list.push({
+                    top: Math.floor(Math.random() * 85) + 5,
+                    left: Math.floor(Math.random() * 90) + 5,
+                    delay: (Math.random() * 2).toFixed(2)
+                });
+                qty--;
+            }
+        }
+
+        function updateCounts() {
+            // Solo especies con individuos presentes; si se extinguen, la
+            // tarjeta queda en 0 y se muestra la causa.
+            for (const sp of SPECIES) {
+                document.getElementById(`count-${sp}`).innerText = populations[sp];
+                const card = document.getElementById(`card-${sp}`);
+                const note = document.getElementById(`note-${sp}`);
+                const isExtinct = populations[sp] === 0 && extinctCause[sp];
+                if (populations[sp] > 0 || isExtinct) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                    if (card.classList.contains('active')) toggleCard(card, namesMap[sp]);
+                }
+                if (note) {
+                    if (isExtinct) {
+                        note.innerText = `Extintos: ${extinctCause[sp]}`;
+                        note.classList.remove('hidden');
+                    } else {
+                        note.classList.add('hidden');
+                    }
+                }
+            }
+        }
+
+        // Mini-gráficas de sparkline en cada tarjeta de especies.
+        function drawCardChart(sp) {
+            const canvas = document.getElementById(`card-chart-${sp}`);
+            if (!canvas) return;
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            if (!w || !h) return;
+            if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+                canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+            }
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, w, h);
+
+            const data = history[sp];
+            const color = colorMap[sp];
+            const maxV = Math.max(1, ...data);
+
+            // Relleno suave bajo la curva
+            if (data.length > 1) {
+                const grad = ctx.createLinearGradient(0, 0, 0, h);
+                grad.addColorStop(0, color + 'cc');
+                grad.addColorStop(1, color + '11');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(0, h);
+                data.forEach((v, i) => {
+                    const x = (i / (data.length - 1)) * w;
+                    const y = h - (v / maxV) * (h - 4);
+                    ctx.lineTo(x, y);
+                });
+                ctx.lineTo(w, h);
+                ctx.closePath(); ctx.fill();
+
+                // Línea
+                ctx.strokeStyle = color; ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                data.forEach((v, i) => {
+                    const x = (i / (data.length - 1)) * w;
+                    const y = h - (v / maxV) * (h - 4);
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+
+            // Valor máximo y mínimo
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.font = '9px sans-serif';
+            ctx.fillText(String(data.length ? Math.max(...data) : 0), 3, 9);
+            ctx.fillText('0', 3, h - 2);
+        }
+
+        // ================================================================
+        //  RENDER DEL ECOSISTEMA (Canvas: biomasa de fondo + formas por especie)
+        //  El <canvas> se dibuja en un rAF loop, y el estado llega por fetch.
+        // ================================================================
+        let latestSnapshot = null;          // estado cacheado del último /api/tick
+        let feralPulse = 0;                 // fase 0..2π para el pulso del feral
+        let hoveredSid = null;              // species_id bajo el cursor (null = ninguno)
+        let hitPoints = [];                 // puntos dibujados en el último frame (hit-test)
+
+        const SID_TO_SPECIES = { neque: 'neques', tigrillo: 'tigrillos', aguila: 'aguilas', feral: 'feral', pajarito: 'pajaritos', cazador: 'cazadores' };
+        const SID_NAMES = { neque: 'Ñeque', tigrillo: 'Tigrillo', aguila: 'Águila', feral: 'Feral (mascota)', pajarito: 'Pajarito', cazador: 'Cazador' };
+
+        function _clamp01(v) { return Math.min(1, Math.max(0, v)); }
+
+        // Interpola gris oscuro (biomasa 0%) -> verde selva (100%).
+        function biomassColor(v) {
+            const t = _clamp01(v / 100);
+            const r = Math.round(55 + (34 - 55) * t);
+            const g = Math.round(58 + (140 - 58) * t);
+            const b = Math.round(63 + (70 - 63) * t);
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function drawEco(ctx, w, h, snap) {
+            // --- Fondo: grid de biomasa 32x32 ---------------------------
+            const grid = snap && snap.biomass ? snap.biomass : null;
+            const n = grid ? grid.length : 32;
+            const cw = w / n, ch = h / n;
+            for (let gy = 0; gy < n; gy++) {
+                for (let gx = 0; gx < n; gx++) {
+                    ctx.fillStyle = biomassColor(grid ? grid[gy][gx] : 50);
+                    ctx.fillRect(gx * cw, gy * ch, cw + 0.5, ch + 0.5);
+                }
+            }
+
+            if (!snap) { hitPoints = []; return; }
+
+            // --- Fauna: emojis por species_id + highlighting por hover ---
+            // (feralPulse se incrementa SOLO en ecoLoop cuando simRunning==true)
+            const feralAlpha = 0.45 + 0.35 * Math.sin(feralPulse);
+            hitPoints = [];
+
+            const SID_EMOJI = {
+                neque: '🐿️', tigrillo: '🐆', aguila: '🦅', feral: '🐕',
+                pajarito: '🐦', cazador: '🧍🏽‍♂️',
+            };
+            const SIZE = { neque: 18, tigrillo: 20, aguila: 20, feral: 18, pajarito: 14, cazador: 18 };
+
+            function drawEmoji(x, y, sid, scale, alpha) {
+                ctx.globalAlpha = alpha;
+                ctx.font = `${Math.round(SIZE[sid] * scale)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(SID_EMOJI[sid] || '·', x, y);
+                ctx.globalAlpha = 1;
+            }
+
+            for (const sp of SPECIES) {
+                const list = snap.entities[sp] || [];
+                for (const e of list) {
+                    const x = (e.left / 100) * w;
+                    const y = (e.top / 100) * h;
+                    const isHit = hoveredSid && e.sid === hoveredSid;
+                    let alpha = hoveredSid && !isHit ? 0.25 : 1;
+                    let scale = isHit ? 1.4 : 1;      // los de su especie crecen
+                    if (e.sid === 'feral') alpha *= feralAlpha;
+                    drawEmoji(x, y, e.sid, scale, alpha);
+                    hitPoints.push({ x, y, sid: e.sid });
+                }
+            }
+        }
+
+        // --- Hover: ilumina puntos de la especie + tooltip ---------------------------
+        function bindEcoHover() {
+            const host = document.getElementById('simulation-canvas');
+            const tooltip = document.getElementById('entity-tooltip');
+            if (!host) return;
+            host.addEventListener('mousemove', (ev) => {
+                const rect = host.getBoundingClientRect();
+                const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+                let best = null, bestDist = 14;   // radio de captura en px
+                for (const p of hitPoints) {
+                    const d = Math.hypot(p.x - mx, p.y - my);
+                    if (d < bestDist) { best = p; bestDist = d; }
+                }
+                if (best) {
+                    hoveredSid = best.sid;
+                    tooltip.innerText = `${SID_NAMES[best.sid] || best.sid}`;
+                    tooltip.style.left = `${best.x + 12}px`;
+                    tooltip.style.top = `${best.y - 10}px`;
+                    tooltip.classList.remove('hidden');
+                    markDirty();     // repaint del canvas con highlight en pausa
+                    drawChart();
+                } else if (hoveredSid) {
+                    hoveredSid = null;
+                    tooltip.classList.add('hidden');
+                    markDirty();
+                    drawChart();
+                }
+            });
+            host.addEventListener('mouseleave', () => {
+                hoveredSid = null;
+                tooltip.classList.add('hidden');
+                markDirty();
+                drawChart();
+            });
+        }
+
+        // Game loop de render: corre a 60fps SIEMPRE que la simulación avance.
+        // En pausa NO repinta a cada frame: solo cuando el estado cambia
+        // (bandera `uiDirty`) para no gastar CPU.
+        let uiDirty = true;
+
+        function ecoLoop() {
+            const host = document.getElementById('simulation-canvas');
+            const canvas = document.getElementById('eco-canvas');
+            if (!host || !canvas) { requestAnimationFrame(ecoLoop); return; }
+
+            if (simRunning) {
+                // Solo en marcha: cálculos de animación (pulso feral) y repintado.
+                feralPulse = (feralPulse + 0.12) % (Math.PI * 2);
+                canvas.width = host.clientWidth;
+                canvas.height = host.clientHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawEco(ctx, canvas.width, canvas.height, latestSnapshot);
+            } else if (uiDirty) {
+                // En pausa: dibuja UNA VEZ el estado congelado + franja de pausa.
+                canvas.width = host.clientWidth;
+                canvas.height = host.clientHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawEco(ctx, canvas.width, canvas.height, latestSnapshot);
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.fillRect(0, 0, canvas.width, 26);
+                ctx.fillStyle = '#b91c1c';
+                ctx.font = 'bold 13px system-ui, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('⏸ PAUSADO — presiona Iniciar para continuar', canvas.width / 2, 18);
+                ctx.textAlign = 'left';
+                uiDirty = false;   // no volver a pintar hasta que cambie algo
+            }
+            requestAnimationFrame(ecoLoop);
+        }
+
+        function markDirty() { uiDirty = true; }
+
+        function renderEcosystem() {
+            // La capa DOM quedó obsoleta: el canvas canvas lo dibuja todo.
+            // Este alias queda para compatibilidad con el resto del código.
+        }
+
+        // ================================================================
+        //  REINICIO TOTAL
+        // ================================================================
+        async function resetSimulation() {
+            // Pausa dura SIN early-return: el reset siempre detiene el timer.
+            simRunning = false;
+            _lastHistoryWeek = -1;
+            if (simTimer !== null) { clearTimeout(simTimer); simTimer = null; }
+            const btnStart = document.getElementById('btnStart');
+            btnStart.classList.remove('opacity-50');
+            document.getElementById('btnPause').classList.add('opacity-50');
+
+            history     = { neques: [], tigrillos: [], aguilas: [], feral: [], cazadores: [], pajaritos: [] };
+            historyLog  = [];
+            generationLog = [];
+            selecciones = [];
+            extinctCause = {};   // las tarjetas de extintos se vuelven a ocultar
+            document.getElementById('eco-log').innerHTML = '';   // limpiar terminal
+            document.getElementById('qtyInput').value = '';
+            latestSnapshot = null;
+            hoveredSid = null;
+            document.getElementById('entity-tooltip').classList.add('hidden');
+
+            try {
+                const snap = await api('/api/reset');
+                applySnapshot(snap);
+                resetUIToServerState(snap);
+                logEvent('🔄 Simulación reiniciada a cero', 'warn');
+            } catch (e) {
+                console.error('reset error', e);
+                logEvent('❌ Reset falló: servidor no responde', 'death');
+            }
+        }
+
+        function resetUIToServerState(snap) {
+            // Master toggle humano OFF
+            hpActive = false;
+            document.getElementById('hpToggle').checked = false;
+            document.getElementById('hpText').innerText = 'OFF';
+            // Sliders de presión humana -> levers del servidor (todos a 0 tras reset)
+            if (snap.levers) {
+                for (const key in leverValues) {
+                    if (key in snap.levers) leverValues[key] = snap.levers[key];
+                }
+            }
+            document.querySelectorAll('#hp-sliders input[data-lever]').forEach(s => {
+                const v = leverValues[s.dataset.lever];
+                s.value = v;
+                const lbl = document.getElementById(`val-${s.dataset.lever}`);
+                if (lbl) lbl.innerText = Number(v).toFixed(2);
+            });
+            // Entorno por especie -> sincronizar con el servidor
+            if (snap.species_env) {
+                for (const sid in speciesEnvValues) {
+                    if (snap.species_env[sid]) {
+                        for (const lever in speciesEnvValues[sid]) {
+                            const key = SPECIES_ENV_KEY[lever];
+                            if (key in snap.species_env[sid]) speciesEnvValues[sid][lever] = snap.species_env[sid][key];
+                        }
+                    }
+                }
+            }
+            onSpeciesEnvChange();
+            // Clima segmentado -> lluvia
+            if (snap.climate_mode) {
+                climateMode = snap.climate_mode;
+                document.querySelectorAll('.segment-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.climate === climateMode);
+                });
+            }
+        }
+
+        // ================================================================
+        //  TARJETAS + GRÁFICA
+        // ================================================================
+        function toggleCard(cardElement, nombreEspecie) {
+            cardElement.classList.toggle('active');
+            selecciones = selecciones.includes(nombreEspecie)
+                ? selecciones.filter(e => e !== nombreEspecie)
+                : [...selecciones, nombreEspecie];
+            updateGraphText();
+            drawChart();
+        }
+
+        function updateGraphText() {
+            const statusText = document.getElementById('graph-status');
+            if (selecciones.length === 0) {
+                statusText.innerText = "Ecosistema Global";
+            } else {
+                statusText.innerText = selecciones.join(" + ");
+            }
+        }
+
+        function checkActiveSpecies() {
+            const anyActive = SPECIES.some(sp => populations[sp] > 0);
+            const placeholder = document.getElementById('chart-placeholder');
+            const graphStatus = document.getElementById('graph-status');
+            if (!anyActive) {
+                graphStatus.innerText = "Esperando Especies";
+                placeholder.innerText = "[ Gráfica inactiva - Esperando individuos ]";
+                placeholder.classList.remove('hidden');
+            } else {
+                placeholder.classList.add('hidden');
+                if (selecciones.length === 0) updateGraphText();
+            }
+        }
+
+        // ================================================================
+        //  GRÁFICA CANVAS (historial de poblaciones)
+        // ================================================================
+        // ================================================================
+        //  GRÁFICA — hiDPI, cuadrícula, suavizado y resaltado por especie
+        // ================================================================
+        function drawChart() {
+            if (currentTab !== 'grafica') return;
+            const canvas = document.getElementById('chart-canvas');
+            const wrapper = document.getElementById('chart-wrapper');
+            const anyActive = SPECIES.some(sp => populations[sp] > 0 || history[sp].length > 0);
+
+            if (!anyActive) { canvas.classList.add('hidden'); return; }
+            canvas.classList.remove('hidden');
+
+            // hiDPI + SCROLL PROPIO: el canvas es más ancho que el visor
+            // (40px por semana de historia, mínimo el ancho visible) y el
+            // contenedor `chart-scroll` permite arrastrar/rueda solo la gráfica.
+            const scroller = document.getElementById('chart-scroll');
+            const dpr = window.devicePixelRatio || 1;
+            const historyLen = Math.max(...SPECIES.map(sp => history[sp].length), 2);
+            const pxPerPoint = 40;
+            const cssW = Math.max(wrapper.clientWidth, historyLen * pxPerPoint + 80);
+            const cssH = wrapper.clientHeight;
+            canvas.style.width = cssW + 'px';
+            canvas.style.height = cssH + 'px';
+            if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+                canvas.width = Math.round(cssW * dpr);
+                canvas.height = Math.round(cssH * dpr);
+            }
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, cssW, cssH);
+            // Auto-desplázate al final (tiempo presente) a menos que el usuario
+            // esté explorando hacia atrás.
+            if (scroller && !scroller.dataset.userScrolled) {
+                scroller.scrollLeft = scroller.scrollWidth;
+            }
+
+            const dark = document.body.classList.contains('dark-mode');
+            const gridColor  = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
+            const textColor  = dark ? '#94a3b8' : '#6b7280';
+            const axisColor  = dark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)';
+
+                // hoveredSid -> clave de especie del gráfico (plural del mockup)
+            const hoverSpeciesKey = hoveredSid
+                ? { neque: 'neques', tigrillo: 'tigrillos', aguila: 'aguilas', feral: 'feral', pajarito: 'pajaritos' }[hoveredSid]
+                : null;
+
+            const speciesToDraw = SPECIES.filter(sp =>
+                history[sp].length > 1 &&
+                (selecciones.length === 0 || selecciones.includes(namesMap[sp]))
+            );
+
+            ctx.font = '11px system-ui, sans-serif';
+            ctx.fillStyle = textColor;
+            ctx.fillText(`Semana ${week} · Gen ${generation}`, 10, 16);
+
+            const maxPop = Math.max(1, ...speciesToDraw.flatMap(sp => history[sp]));
+            const padL = 36, padR = 14, padT = 26, padB = 22;
+            const w = cssW - padL - padR, h = cssH - padT - padB;
+
+            // Cuadrícula horizontal (4 franjas) con etiquetas de población.
+            ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
+            ctx.fillStyle = textColor; ctx.textAlign = 'right';
+            for (let i = 0; i <= 4; i++) {
+                const y = padT + (h * i) / 4;
+                const val = Math.round(maxPop * (1 - i / 4));
+                ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + w, y); ctx.stroke();
+                ctx.fillText(String(val), padL - 6, y + 3);
+            }
+            ctx.textAlign = 'left';
+
+            // Ejes
+            ctx.strokeStyle = axisColor; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + h); ctx.lineTo(padL + w, padT + h); ctx.stroke();
+
+            // Leyenda
+            let lx = padL + 8;
+            for (const sp of speciesToDraw) {
+                ctx.fillStyle = colorMap[sp];
+                ctx.beginPath(); ctx.arc(lx + 4, 12, 4, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = textColor;
+                ctx.fillText(namesMap[sp], lx + 12, 16);
+                lx += 12 + ctx.measureText(namesMap[sp]).width + 18;
+            }
+
+            // Líneas: sin hover todas opacas; con hover, la especie brilla.
+            for (const sp of speciesToDraw) {
+                const data = history[sp];
+                const highlighted = hoverSpeciesKey === sp;
+                const dimmed = hoverSpeciesKey && !highlighted;
+
+                ctx.save();
+                ctx.strokeStyle = colorMap[sp];
+                ctx.lineWidth = highlighted ? 3.2 : 1.7;
+                ctx.globalAlpha = dimmed ? 0.25 : 1;
+                if (highlighted) {                  // leve halo
+                    ctx.shadowColor = colorMap[sp];
+                    ctx.shadowBlur = 8;
+                }
+                ctx.beginPath();
+                data.forEach((v, i) => {
+                    const x = padL + (i / Math.max(data.length - 1, 1)) * w;
+                    const y = padT + h - (v / maxPop) * h;
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);   // líneas suaves
+                });
+                ctx.stroke();
+                ctx.restore();
+
+                // Punto final con valor
+                if (!dimmed && data.length) {
+                    const lastX = padL + w;
+                    const lastY = padT + h - (data[data.length - 1] / maxPop) * h;
+                    ctx.fillStyle = colorMap[sp];
+                    ctx.beginPath(); ctx.arc(lastX, lastY, highlighted ? 4.5 : 3, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+        }
+
+        function toggleTheme() {
+            const dark = document.body.classList.toggle('dark-mode');
+            const btn = document.getElementById('theme-toggle');
+            btn.innerText = dark ? '☀️' : '🌙';
+            btn.title = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+            markDirty();     // repaint del canvas con la paleta del tema
+            drawChart();
+        }
+
+        // ================================================================
+        //  PESTAÑAS (Gráfica / Generaciones / Historial)
+        // ================================================================
+        let currentTab = 'grafica';
+        function switchTab(tab) {
+            currentTab = tab;
+            ['grafica', 'generaciones', 'historial'].forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    el.className = 'text-blue-600 font-bold border-b-2 border-blue-600 pb-1 text-sm';
+                } else {
+                    el.className = 'text-gray-500 hover:text-gray-800 font-medium pb-1 transition-colors text-sm';
+                }
+            });
+
+            const canvas = document.getElementById('chart-canvas');
+            const content = document.getElementById('tab-content');
+            const placeholder = document.getElementById('chart-placeholder');
+
+            if (tab === 'grafica') {
+                content.classList.add('hidden');
+                canvas.classList.remove('hidden');
+                drawChart();
+                if (!SPECIES.some(sp => populations[sp] > 0)) placeholder.classList.remove('hidden');
+            } else {
+                canvas.classList.add('hidden');
+                placeholder.classList.add('hidden');
+                content.classList.remove('hidden');
+                content.innerHTML = tab === 'generaciones' ? renderGenerationsHTML() : renderHistoryHTML();
+            }
+        }
+
+        function renderGenerationsHTML() {
+            if (generationLog.length === 0) return '<p class="text-gray-400">[ Sin generaciones completadas aún ]</p>';
+            return generationLog.slice(-20).reverse().map(g =>
+                `<p class="border-b border-gray-200 py-1"><strong>Gen ${g.gen}</strong> (año ${g.year}): ` +
+                SPECIES.map(sp => `${emojisMap[sp]} ${g.pops[sp]}`).join(' · ') + '</p>'
+            ).join('');
+        }
+
+        function renderHistoryHTML() {
+            if (historyLog.length === 0) return '<p class="text-gray-400">[ Sin eventos registrados ]</p>';
+            return historyLog.slice(-30).reverse().map(e =>
+                `<p class="border-b border-gray-200 py-1">${e}</p>`
+            ).join('');
+        }
+
+        // ================================================================
+        //  SCROLL DE LA GRÁFICA (solo la gráfica se mueve, no la página)
+        // ================================================================
+        (function bindChartScroll() {
+            const scroller = document.getElementById('chart-scroll');
+            if (!scroller) return;
+            // Marca cuando el usuario explora hacia atrás (para no auto-avanzar).
+            scroller.addEventListener('scroll', () => {
+                const atEnd = scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 20;
+                if (atEnd) delete scroller.dataset.userScrolled;
+                else scroller.dataset.userScrolled = '1';
+            });
+            // Rueda vertical -> scroll horizontal de la gráfica.
+            scroller.addEventListener('wheel', (ev) => {
+                ev.preventDefault();
+                scroller.scrollLeft += ev.deltaY;
+            }, { passive: false });
+        })();
+
+        // Inicializar badges, hover y arrancar el loop de render (rAF, 60fps)
+        updateClockBadge();
+        bindEcoHover();
+        // Resize de la ventana: repintar el canvas pausado.
+        window.addEventListener('resize', () => markDirty());
+        requestAnimationFrame(ecoLoop);
+    </script>
+</body>
+</html>
