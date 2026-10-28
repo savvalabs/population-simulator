@@ -161,6 +161,10 @@ class PredatorSystem(System):
                 # Sin presas en la celda: olfatea la presa VIVA más cercana y
                 # se dirige a ella (rango Manhattan = speed/4).
                 energy.current_energy -= 1
+                # Etiqueta diagnóstica: sin esto, un depredador que muere de
+                # inanición llega al DeathSystem con la causa vacía y el log
+                # reporta "causa desconocida" (bug de extinciones ilegibles).
+                energy.last_damage_source = "hambre (sin presas)"
                 if rng is not None and pheno.speed > 0:
                     steps = max(1, int(pheno.speed / MOVE_PER_SPEED))
                     target = None

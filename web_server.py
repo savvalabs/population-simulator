@@ -334,6 +334,25 @@ class Simulation:
                 self.log(f"➖ -{removed} {species}")
             return self.snapshot()
 
+    def set_population(self, species: str, qty: int) -> dict:
+        """Fija la población de una especie en una cantidad EXACTA.
+
+        Usado por los inputs de cantidad de Mascotas/Cazadores: el usuario
+        dice "quiero 12 mascotas" y el servidor añade/quita la diferencia
+        (sin avanzar el reloj — la gráfica permanece plana).
+        """
+        with self._lock:
+            qty = max(0, int(qty))
+            current = len(self._entities_of(species))
+            delta = qty - current
+            if delta > 0:
+                self._spawn(species, delta)
+            elif delta < 0:
+                self._remove(species, -delta)
+            if delta != 0:
+                self.log(f"⏸ {species}: población fijada en {qty}")
+            return self.snapshot()
+
     def reset(self) -> dict:
         """Reset TOTAL: motor + palancas + logs.
 
@@ -412,6 +431,17 @@ class Simulation:
                     EnergyComponent(current_energy=60, max_energy=120),
                     Diet(diet_type=DietType.CARNIVORE),
                 )
+            elif species == "feral":
+                # Mascotas (perros/gatos): depredadores que NO mueren de
+                # hambre (HumanPressureSystem los alimenta en casa cada tick).
+                self.registry.create_entity(
+                    Position(x=x, y=y),
+                    SpeciesRef(species_id="feral"),
+                    GenomeComponent(genes=dict(self.SPECIES_GENOMES["feral"])),
+                    PhenotypeComponent(),
+                    EnergyComponent(current_energy=200, max_energy=200),
+                    Diet(diet_type=DietType.CARNIVORE),
+                )
             elif species == "pajaritos":
                 # Presa aérea REAL: la cazan tigrillos (salto) y águilas.
                 # Genoma diferenciado → speed 13.5, camuflaje 0.8 (huyendo).
@@ -484,6 +514,9 @@ class Handler(BaseHTTPRequestHandler):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        # no-store: el cliente siempre recibe estado fresco (los snapshots
+        # cambian cada tick; cache del navegador = estados fantasma).
+        self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -508,6 +541,10 @@ class Handler(BaseHTTPRequestHandler):
             body = HTML_PATH.read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            # no-store: garantiza que el navegador SIEMPRE sirva el HTML y JS
+            # actuales — sin esto, una pestaña con cache antiguo "regresa" bugs
+            # de UI ya corregidos (gráfica, handlers, etc.).
+            self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -527,6 +564,14 @@ class Handler(BaseHTTPRequestHandler):
                         data.get("species", "neques"),
                         data.get("action", "add"),
                         data.get("qty", 1),
+                    )
+                )
+            elif self.path == "/api/population_set":
+                # Fija cantidad exacta (inputs de Mascotas/Cazadores del panel).
+                self._send_json(
+                    SIM.set_population(
+                        data.get("species", "feral"),
+                        data.get("qty", 0),
                     )
                 )
             elif self.path == "/api/climate":

@@ -103,9 +103,18 @@ class HumanPressureSystem(System):
     # -- tick ---------------------------------------------------------------
 
     def update(self, ctx: SystemContext) -> None:
+        registry = ctx.registry
+
+        # Las mascotas (ferales) SIEMPRE están alimentadas en casa: jamás
+        # mueren de hambre, estén activas o no las demás palancas humanas.
+        # (Antes dependían del lever `invasive`; ahora la población la fija
+        # directamente el usuario y el alimentado es incondicional.)
+        for _e, sref, energy in registry.query(SpeciesRef, EnergyComponent):
+            if sref.species_id == "feral" and energy.current_energy < self._feral_energy_floor:
+                energy.current_energy = self._feral_energy_floor
+
         if not self.active:
             return
-        registry = ctx.registry
         rng = ctx.rng
 
         center = self.world_size / 2.0

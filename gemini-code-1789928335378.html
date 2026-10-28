@@ -6,111 +6,171 @@
     <title>Population Simulator 2 - Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Estilos base iOS y Glassmorphism */
+        /* ================================================================
+           LAB ECOLÓGICO — sistema de diseño (v2)
+           Base (sin clase) = laboratorio oscuro. `body.dark-mode` (toggled
+           por ☀️/🌙) = tema claro "papel de campo". La paleta del canvas
+           (biomasa, gráficas) vive en el objeto THEME del script.
+           ================================================================ */
         body {
-            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            background: linear-gradient(135deg, #0c1613 0%, #090f0d 100%);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             height: 100vh;
             overflow: hidden;
             transition: background 0.4s ease;
+            color: #e4efe9;
         }
         body.dark-mode {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
+            background: linear-gradient(135deg, #edf2ee 0%, #dee8e2 100%);
+            color: #1d2c26;
         }
-        body.dark-mode .glass, body.dark-mode .glass-panel {
-            background: rgba(30, 41, 59, 0.55);
-            border-color: rgba(255,255,255,0.12);
-            color: #e2e8f0;
-        }
-        body.dark-mode .text-gray-800, body.dark-mode .text-gray-700,
-        body.dark-mode .text-gray-600, body.dark-mode .text-gray-500 { color: #cbd5e1; }
-        body.dark-mode .text-gray-400 { color: #94a3b8; }
-        body.dark-mode select, body.dark-mode input[type=number] {
-            background: #1e293b; color: #e2e8f0; border-color: #334155;
-        }
-        body.dark-mode #eco-log { background: rgba(2, 6, 23, 0.9); border-color: rgba(255,255,255,0.15); }
-        body.dark-mode #chart-wrapper, body.dark-mode #simulation-canvas {
-            background: rgba(15,23,42,0.45); border-color: rgba(255,255,255,0.1); }
-        /* Pastillas blancas (Año/velocidad, botones) en modo oscuro */
-        body.dark-mode .bg-white\/80, body.dark-mode .bg-white\/60,
-        body.dark-mode .bg-white\/50, body.dark-mode .bg-white\/40,
-        body.dark-mode .bg-white {
-            background-color: rgba(30, 41, 59, 0.85) !important;
-            color: #e2e8f0 !important;
-        }
-        body.dark-mode .hover\:bg-white:hover,
-        body.dark-mode .hover\:bg-gray-50:hover { background-color: #334155 !important; }
-        body.dark-mode button.text-red-600 { color: #fca5a5 !important; border-color: rgba(255,255,255,0.15); }
+
+        /* -- Paneles glass (instrumento) ------------------------------------ */
         .glass {
-            background: rgba(255, 255, 255, 0.45);
+            background: rgba(16, 28, 24, 0.55);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(52, 211, 153, 0.14);
         }
-        .glass-panel { background: rgba(255, 255, 255, 0.7); }
-        
-        /* Segmented Control iOS (Clima) */
+        .glass-panel { background: rgba(22, 38, 32, 0.72); }
+        body.dark-mode .glass, body.dark-mode .glass-panel {
+            background: rgba(255, 255, 255, 0.55);
+            border-color: rgba(30, 60, 50, 0.12);
+        }
+
+        /* -- Neutros Tailwind re-tintados (base = oscuro) ------------------- */
+        .text-gray-800, .text-gray-700, .text-gray-600 { color: #cfe0da !important; }
+        .text-gray-500 { color: #93aca3 !important; }
+        .text-gray-400 { color: #6f8780 !important; }
+        select, input[type=number] {
+            background: #10201b; color: #d9e7e1; border-color: #2b4a41;
+        }
+        .bg-white\/80, .bg-white\/60, .bg-white\/50, .bg-white\/40,
+        .bg-white\/30, .bg-white {
+            background-color: rgba(20, 34, 29, 0.85) !important;
+            color: #e4efe9 !important;
+        }
+        .hover\:bg-white:hover, .hover\:bg-gray-50:hover { background-color: #22382f !important; }
+        button.text-red-600 { color: #fb7185 !important; border-color: rgba(251, 113, 133, 0.25); }
+
+        /* Acento del lab: teal/esmeralda para los azules de Tailwind */
+        .text-blue-600 { color: #2dd4bf !important; }
+        .border-blue-600 { border-color: #2dd4bf !important; }
+        .bg-blue-600 { background-color: #0d9488 !important; }
+        .hover\:bg-blue-700:hover { background-color: #0f766e !important; }
+        .bg-blue-100 { background-color: rgba(45, 212, 191, 0.16) !important; }
+        .hover\:bg-blue-200:hover { background-color: rgba(45, 212, 191, 0.28) !important; }
+        .text-blue-600.hover\:text-gray-800:hover { color: #5eead4 !important; }
+
+        /* Badges de datos: teal en ambos temas; rojo cuando está en pausa */
+        #sim-speed-badge { color: #2dd4bf !important; }
+        #sim-speed-badge.text-red-600 { color: #fb7185 !important; }
+        #val-tiempo { color: #2dd4bf !important; }
+        #graph-status { color: #2dd4bf !important; }
+
+        /* -- Tema claro (clase dark-mode presente) -------------------------- */
+        body.dark-mode .text-gray-800, body.dark-mode .text-gray-700,
+        body.dark-mode .text-gray-600 { color: #33453e !important; }
+        body.dark-mode .text-gray-500 { color: #5d7268 !important; }
+        body.dark-mode .text-gray-400 { color: #7d9188 !important; }
+        body.dark-mode select, body.dark-mode input[type=number] {
+            background: #ffffff; color: #1d2c26; border-color: #c3d2cb;
+        }
+        body.dark-mode .bg-white\/80, body.dark-mode .bg-white\/60,
+        body.dark-mode .bg-white\/50, body.dark-mode .bg-white\/40,
+        body.dark-mode .bg-white\/30, body.dark-mode .bg-white {
+            background-color: rgba(255, 255, 255, 0.85) !important;
+            color: #1d2c26 !important;
+        }
+        body.dark-mode .hover\:bg-white:hover,
+        body.dark-mode .hover\:bg-gray-50:hover { background-color: #f4f8f6 !important; }
+        body.dark-mode button.text-red-600 { color: #dc2626 !important; border-color: rgba(220, 38, 38, 0.2); }
+
+        /* -- Superficies de datos ------------------------------------------- */
+        #chart-wrapper, #simulation-canvas {
+            background: rgba(8, 14, 12, 0.45);
+            border-color: rgba(52, 211, 153, 0.14);
+        }
+        body.dark-mode #chart-wrapper, body.dark-mode #simulation-canvas {
+            background: rgba(255, 255, 255, 0.35);
+            border-color: rgba(30, 60, 50, 0.15);
+        }
+        /* La terminal ecológica permanece oscura en ambos temas */
+        #eco-log { border: 1px solid rgba(52, 211, 153, 0.18) !important; }
+
+        /* -- Segmented Control (selector de instrumento) -------------------- */
         .segmented-control {
-            background: rgba(0, 0, 0, 0.08);
+            background: rgba(0, 0, 0, 0.30);
+            border: 1px solid rgba(52, 211, 153, 0.14);
             border-radius: 8px;
             padding: 2px;
             display: flex;
         }
         .segment-btn {
             flex: 1; text-align: center; padding: 4px 0; font-size: 13px;
-            border-radius: 6px; cursor: pointer; transition: all 0.2s ease; color: #4b5563;
+            border-radius: 6px; cursor: pointer; transition: all 0.2s ease; color: #8fa8a0;
         }
         .segment-btn.active {
-            background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; color: #111827;
+            background: rgba(52, 211, 153, 0.16);
+            box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.35);
+            font-weight: 600; color: #34d399;
+        }
+        body.dark-mode .segmented-control {
+            background: rgba(29, 44, 38, 0.10);
+            border-color: rgba(30, 60, 50, 0.15);
+        }
+        body.dark-mode .segment-btn { color: #5d7268; }
+        body.dark-mode .segment-btn.active {
+            background: rgba(13, 148, 136, 0.14);
+            box-shadow: inset 0 0 0 1px rgba(13, 148, 136, 0.35);
+            color: #0f766e;
         }
 
-        /* Transiciones de Tarjetas */
+        /* -- Transiciones de Tarjetas --------------------------------------- */
         .species-card { transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer; }
         .species-card.active {
             transform: scale(1.05) translateY(-5px);
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            background: rgba(28, 48, 40, 0.92);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(52, 211, 153, 0.4);
             z-index: 10;
+        }
+        body.dark-mode .species-card.active {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(13, 148, 136, 0.45);
         }
         .species-details { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease; }
         .species-card.active .species-details { max-height: 100px; opacity: 1; margin-top: 10px; }
 
-        /* Desplegable de Población */
+        /* -- Desplegable de Población --------------------------------------- */
         .add-menu { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease; }
         .add-menu.open { max-height: 200px; opacity: 1; margin-top: 8px; }
 
-        /* Sliders iOS */
+        /* -- Sliders de instrumento ------------------------------------------ */
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
-            background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; margin-top: -8px;
+            background: #34d399; border: 2px solid #0b1512;
+            box-shadow: 0 0 6px rgba(52, 211, 153, 0.55); cursor: pointer; margin-top: -8px;
         }
         input[type=range]::-webkit-slider-runnable-track {
-            width: 100%; height: 6px; cursor: pointer; background: rgba(0,0,0,0.1); border-radius: 4px;
+            width: 100%; height: 6px; cursor: pointer; background: rgba(148, 175, 166, 0.25); border-radius: 4px;
+        }
+        body.dark-mode input[type=range]::-webkit-slider-thumb {
+            background: #0d9488; border-color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        }
+        body.dark-mode input[type=range]::-webkit-slider-runnable-track {
+            background: rgba(29, 44, 38, 0.18);
         }
 
-        /* iOS Toggle Switch */
-        .toggle-checkbox:checked { right: 0; border-color: #34C759; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #34C759; }
+        /* -- Toggle Switch (mateo de laboratorio) --------------------------- */
+        .toggle-checkbox:checked { right: 0; border-color: #34d399; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #34d399; }
         .toggle-checkbox { right: 4px; z-index: 1; transition: all 0.3s; }
-        .toggle-label { width: 44px; height: 24px; background-color: #e5e7eb; border-radius: 9999px; transition: all 0.3s; }
+        .toggle-label { width: 44px; height: 24px; background-color: rgba(255, 255, 255, 0.15); border-radius: 9999px; transition: all 0.3s; }
+        body.dark-mode .toggle-label { background-color: #e5e7eb; }
         .toggle-dot { top: 2px; left: 2px; width: 20px; height: 20px; background-color: white; border-radius: 50%; transition: all 0.3s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
         .toggle-checkbox:checked ~ .toggle-dot { transform: translateX(20px); }
-
-        /* Animación de Entidades Vivas */
-        @keyframes float {
-            0% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-4px) rotate(2deg); }
-            100% { transform: translateY(0px) rotate(0deg); }
-        }
-        .entity {
-            position: absolute;
-            font-size: 1.5rem;
-            animation: float 3s ease-in-out infinite;
-            filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.15));
-            user-select: none;
-        }
     </style>
 </head>
 <body class="p-4 flex flex-col gap-4 text-gray-800">
@@ -124,7 +184,7 @@
             <!-- Cabecera Superior (Sobre el contorno) -->
             <div class="flex items-center justify-between w-full relative mb-3 h-10">
                 <!-- Etiqueta izquierda (Estado y velocidad) -->
-                <div class="bg-white/80 px-3 py-1.5 rounded-full text-xs font-bold text-gray-700 shadow-sm flex items-center gap-2">
+                <div class="bg-white/80 px-3 py-1.5 rounded-full text-xs font-bold text-gray-700 shadow-sm flex items-center gap-2 font-mono">
                     <span id="year-badge">Año 0</span>
                     <span class="text-gray-300">|</span>
                     <span class="text-blue-600 flex items-center gap-1">
@@ -158,7 +218,19 @@
 
         <!-- Panel Lateral Derecho (Controles) -->
         <div class="glass w-80 rounded-3xl p-5 flex flex-col gap-5 overflow-y-auto">
-            
+
+            <!-- Velocidad del Tiempo (PRIMERO: control principal de reproducción) -->
+            <div class="pb-3 border-b border-gray-300/40">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Velocidad del Tiempo</h3>
+                <div>
+                    <div class="flex justify-between text-xs mb-1 text-gray-600 font-medium">
+                        <span>Semanas por segundo</span>
+                        <span id="val-tiempo" class="font-bold text-blue-600 font-mono">2</span>
+                    </div>
+                    <input type="range" min="1" max="20" value="2" oninput="updateTimeText(this.value)">
+                </div>
+            </div>
+
             <!-- Gestión de Población -->
             <div class="bg-white/40 p-3 rounded-2xl border border-white/60">
                 <button onclick="toggleAddMenu()" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl py-2 font-semibold text-sm transition-colors flex justify-center items-center gap-2">
@@ -172,6 +244,7 @@
                         <option value="tigrillos">Tigrillos</option>
                         <option value="aguilas">Águilas</option>
                         <option value="cazadores">Cazadores</option>
+                        <option value="feral">Mascotas</option>
                         <option value="pajaritos">Pajaritos</option>
                     </select>
                     <input type="number" id="qtyInput" placeholder="Cantidad (ej. 10)" min="1" class="w-full p-2 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -228,32 +301,38 @@
                 </div>
                 <div class="flex flex-col gap-2" id="hp-sliders">
                     <div>
-                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Urbanización</span><span id="val-urbanization">0.00</span></div>
-                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="urbanization" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Urbanización</span><span id="val-urbanization">1</span></div>
+                        <input type="range" min="1" max="10" step="1" value="1" data-lever="urbanization" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
                     </div>
                     <div>
-                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Deforestación</span><span id="val-food_scarcity">0.00</span></div>
-                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="food_scarcity" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Deforestación</span><span id="val-food_scarcity">1</span></div>
+                        <input type="range" min="1" max="10" step="1" value="1" data-lever="food_scarcity" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
                     </div>
                     <div>
-                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Contaminación</span><span id="val-contamination">0.00</span></div>
-                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="contamination" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Contaminación</span><span id="val-contamination">1</span></div>
+                        <input type="range" min="1" max="10" step="1" value="1" data-lever="contamination" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
                     </div>
                     <div>
-                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Cazadores</span><span id="val-hunters">0.00</span></div>
-                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="hunters" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Ruido / Turismo</span><span id="val-noise">1</span></div>
+                        <input type="range" min="1" max="10" step="1" value="1" data-lever="noise" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
                     </div>
                     <div>
-                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Ruido / Turismo</span><span id="val-noise">0.00</span></div>
-                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="noise" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Carreteras</span><span id="val-roads">1</span></div>
+                        <input type="range" min="1" max="10" step="1" value="1" data-lever="roads" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                    </div>
+                    <!-- Cantidad directa: mascotas y cazadores son entidades,
+                         el usuario fija CUÁNTOS quiere (no una palanca 0..1). -->
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>🐕 Mascotas</span><span id="val-petcount">0</span></div>
+                        <input type="number" id="qty-mascotas" min="0" max="200" value="0"
+                               class="w-full p-1.5 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               onchange="setSpeciesQuantity('feral', this.value)">
                     </div>
                     <div>
-                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Carreteras</span><span id="val-roads">0.00</span></div>
-                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="roads" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>Mascotas ferales</span><span id="val-invasive">0.00</span></div>
-                        <input type="range" min="0" max="1" step="0.05" value="0" data-lever="invasive" oninput="onLeverInput(this)" onchange="pushHumanPressure()">
+                        <div class="flex justify-between text-[11px] mb-0.5 text-gray-600 font-medium"><span>🧍 Cazadores</span><span id="val-huntercount">0</span></div>
+                        <input type="number" id="qty-cazadores" min="0" max="200" value="0"
+                               class="w-full p-1.5 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               onchange="setSpeciesQuantity('cazadores', this.value)">
                     </div>
                 </div>
             </div>
@@ -262,18 +341,6 @@
             <div>
                 <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Log Ecológico</h3>
                 <div id="eco-log" class="bg-gray-900/80 text-green-300 font-mono text-[11px] rounded-xl p-2 h-28 overflow-y-auto flex flex-col gap-0.5 border border-white/30"></div>
-            </div>
-
-            <!-- Velocidad del Tiempo -->
-            <div class="pt-3 border-t border-gray-300/40 mt-auto">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Velocidad del Tiempo</h3>
-                <div>
-                    <div class="flex justify-between text-xs mb-1 text-gray-600 font-medium">
-                        <span>Semanas por segundo</span>
-                        <span id="val-tiempo" class="font-bold text-blue-600">2</span>
-                    </div>
-                    <input type="range" min="1" max="20" value="2" oninput="updateTimeText(this.value)">
-                </div>
             </div>
         </div>
     </div>
@@ -289,9 +356,9 @@
                 <div class="text-xs font-bold text-gray-500 bg-white/50 px-3 py-1 rounded-full">
                     Vista: <span id="graph-status" class="text-blue-600">Esperando Especies</span>
                 </div>
-                <button id="theme-toggle" onclick="toggleTheme()" title="Cambiar a modo oscuro/claro"
+                <button id="theme-toggle" onclick="toggleTheme()" title="Cambiar a modo claro"
                         class="bg-white/60 hover:bg-white text-gray-700 rounded-full px-3 py-1 text-sm shadow-sm border border-white/60 transition-colors">
-                    🌙
+                    ☀️
                 </button>
             </div>
         </div>
@@ -311,7 +378,7 @@
             <div id="card-neques" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Ñeques')">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-2"><span class="text-2xl">🐿️</span><h4 class="font-bold text-gray-800">Ñeques</h4></div>
-                    <span id="count-neques" class="text-xl font-black text-green-600">0</span>
+                    <span id="count-neques" class="text-xl font-black font-mono text-green-600">0</span>
                 </div>
                 <canvas id="card-chart-neques" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
                 <p id="note-neques" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
@@ -320,16 +387,16 @@
             <div id="card-tigrillos" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Tigrillos')">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-2"><span class="text-2xl">🐆</span><h4 class="font-bold text-gray-800">Tigrillos</h4></div>
-                    <span id="count-tigrillos" class="text-xl font-black text-orange-500">0</span>
+                    <span id="count-tigrillos" class="text-xl font-black font-mono text-orange-500">0</span>
                 </div>
                 <canvas id="card-chart-tigrillos" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
                 <p id="note-tigrillos" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
             </div>
 
-            <div id="card-feral" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Ferales')">
+            <div id="card-feral" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Mascotas')">
                 <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-2"><span class="text-2xl">🐕</span><h4 class="font-bold text-gray-800">Ferales</h4></div>
-                    <span id="count-feral" class="text-xl font-black text-red-600">0</span>
+                    <div class="flex items-center gap-2"><span class="text-2xl">🐕</span><h4 class="font-bold text-gray-800">Mascotas</h4></div>
+                    <span id="count-feral" class="text-xl font-black font-mono text-red-600">0</span>
                 </div>
                 <canvas id="card-chart-feral" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
                 <p id="note-feral" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
@@ -338,7 +405,7 @@
             <div id="card-aguilas" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Águilas')">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-2"><span class="text-2xl">🦅</span><h4 class="font-bold text-gray-800">Águilas</h4></div>
-                    <span id="count-aguilas" class="text-xl font-black text-orange-500">0</span>
+                    <span id="count-aguilas" class="text-xl font-black font-mono text-orange-500">0</span>
                 </div>
                 <canvas id="card-chart-aguilas" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
                 <p id="note-aguilas" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
@@ -347,7 +414,7 @@
             <div id="card-cazadores" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Cazadores')">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-2"><span class="text-2xl">🧍🏽‍♂️</span><h4 class="font-bold text-gray-800">Cazadores</h4></div>
-                    <span id="count-cazadores" class="text-xl font-black text-red-600">0</span>
+                    <span id="count-cazadores" class="text-xl font-black font-mono text-red-600">0</span>
                 </div>
                 <p class="text-[10px] text-gray-500 mt-1 leading-tight">Cazan ñeques y tigrillos (trampas/escopetas)</p>
                 <canvas id="card-chart-cazadores" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
@@ -357,7 +424,7 @@
             <div id="card-pajaritos" class="glass-panel species-card flex-1 rounded-2xl p-4 flex flex-col hidden" onclick="toggleCard(this, 'Pajaritos')">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-2"><span class="text-2xl">🐦</span><h4 class="font-bold text-gray-800">Pajaritos</h4></div>
-                    <span id="count-pajaritos" class="text-xl font-black text-blue-500">0</span>
+                    <span id="count-pajaritos" class="text-xl font-black font-mono text-blue-500">0</span>
                 </div>
                 <canvas id="card-chart-pajaritos" class="w-full h-12 mt-2 rounded bg-white/30"></canvas>
                 <p id="note-pajaritos" class="hidden text-[10px] text-red-600 font-semibold mt-1"></p>
@@ -371,8 +438,31 @@
         // ================================================================
         const SPECIES = ['neques', 'tigrillos', 'aguilas', 'feral', 'cazadores', 'pajaritos'];
         const emojisMap = { neques: '🐿️', tigrillos: '🐆', aguilas: '🦅', feral: '🐕', cazadores: '🧍🏽‍♂️', pajaritos: '🐦' };
-        const namesMap  = { neques: 'Ñeques', tigrillos: 'Tigrillos', aguilas: 'Águilas', feral: 'Ferales', cazadores: 'Cazadores', pajaritos: 'Pajaritos' };
-        const colorMap  = { neques: '#16a34a', tigrillos: '#f97316', aguilas: '#ea580c', feral: '#dc2626', cazadores: '#6b7280', pajaritos: '#3b82f6' };
+        const namesMap  = { neques: 'Ñeques', tigrillos: 'Tigrillos', aguilas: 'Águilas', feral: 'Mascotas', cazadores: 'Cazadores', pajaritos: 'Pajaritos' };
+        // ==== THEME: paleta visual del canvas (único lugar para retocarla) ====
+        // El diseño DOM vive en el <style>; estos son los colores que dibuja
+        // JS sobre los <canvas>. Cambiar valores NO toca lógica.
+        const THEME = {
+            // Fondo del ecosistema: gris oscuro (biomasa 0%) -> verde selva (100%).
+            biomass: { low: [55, 58, 63], high: [34, 140, 70] },
+            // Línea por especie (gráfica principal, sparklines de tarjeta, leyenda).
+            species: {
+                neques: '#34d399', tigrillos: '#fbbf24', aguilas: '#a78bfa',
+                feral: '#fb7185', cazadores: '#94a3b8', pajaritos: '#38bdf8',
+            },
+            // Cuadrícula/etiquetas de la gráfica por tema de página. OJO: la
+            // clase `dark-mode` de <body> conmuta hacia el tema CLARO — el
+            // laboratorio oscuro es el estado base (sin clase).
+            chart: {
+                gridLight: 'rgba(18,45,34,0.10)',  textLight: '#4a635a',  axisLight: 'rgba(18,45,34,0.28)',
+                gridDark:  'rgba(170,255,215,0.07)', textDark: '#8faea3', axisDark:  'rgba(170,255,215,0.25)',
+            },
+            // Pulso de opacidad de las mascotas en el visor.
+            feralPulse: { min: 0.45, amp: 0.35 },
+            // Franja de PAUSA sobre el visor.
+            pause: { overlay: 'rgba(235,245,240,0.60)', text: '#c22a2a' },
+        };
+        const colorMap  = THEME.species;
         // Presas que caza cada especie depredadora
         const preyMap   = { tigrillos: ['neques', 'pajaritos'], aguilas: ['neques', 'pajaritos'], cazadores: SPECIES };
 
@@ -424,16 +514,18 @@
             generation = snap.generation;
             // Solo registrar un punto nuevo cuando la semana avanza.
             // Si la semana es la misma, sustituir el punto (corrige el bug de
-            // "gráfica creciente sin tiempo transcurrido").
+            // "gráfica creciente sin tiempo transcurrido" — spawneos a la
+            // misma semana no crean pendiente). Si la especie aún no tiene
+            // NINGÚN punto (p.ej. primeras mascotas), se crea su punto inicial.
             const isNewWeek = snap.week !== _lastHistoryWeek;
             if (isNewWeek) _lastHistoryWeek = snap.week;
             for (const sp of SPECIES) {
                 const prev = populations[sp];
                 populations[sp] = snap.populations[sp];
-                if (isNewWeek) {
+                if (isNewWeek || history[sp].length === 0) {
                     history[sp].push(populations[sp]);
                     if (history[sp].length > 200) history[sp].shift();
-                } else if (history[sp].length > 0) {
+                } else {
                     history[sp][history[sp].length - 1] = populations[sp];
                 }
                 if (prev > 0 && populations[sp] === 0) {
@@ -441,12 +533,32 @@
                     // La causa llega por el log del servidor en esta misma snapshot.
                 }
             }
+            // Inputs de cantidad (mascotas/cazadores) reflejan el conteo real,
+            // salvo que el usuario esté editándolos en este momento.
+            const petIn = document.getElementById('qty-mascotas');
+            if (petIn && document.activeElement !== petIn) {
+                petIn.value = populations['feral'] || 0;
+                const lbl = document.getElementById('val-petcount');
+                if (lbl) lbl.innerText = populations['feral'] || 0;
+            }
+            const cazIn = document.getElementById('qty-cazadores');
+            if (cazIn && document.activeElement !== cazIn) {
+                cazIn.value = populations['cazadores'] || 0;
+                const lbl = document.getElementById('val-huntercount');
+                if (lbl) lbl.innerText = populations['cazadores'] || 0;
+            }
             if (snap.log && snap.log.length) {
                 for (const msg of snap.log.slice(-5)) {
                     logEvent(msg, 'info');
-                    // Extraer causa de extinción del log del motor.
+                    // Extraer causa de extinción del log del motor (ambos
+                    // formatos: con causa dominante y sin registrar).
                     const m = msg.match(/Extinción de (\w+): causa dominante = (.+)/);
-                    if (m) extinctCause[m[1]] = m[2];
+                    if (m) {
+                        extinctCause[m[1]] = m[2];
+                    } else {
+                        const m2 = msg.match(/Extinción de (\w+) \(sin causa registrada\)/);
+                        if (m2) extinctCause[m2[1]] = 'causa no registrada';
+                    }
                 }
             }
             if (snap.entities) entities = snap.entities;     // posiciones del Engine
@@ -459,23 +571,33 @@
             syncEnvLabelsFromLevers(snap.levers);
         }
 
-        // Slider -> estado local (sin API, eso lo hace onchange)
+        // Slider -> estado local (sin API, eso lo hace onchange).
+        // La UI guarda la escala 1..10; al motor se le envía lever = valor/10.
         const leverValues = {
-            urbanization: 0, food_scarcity: 0, contamination: 0,
-            hunters: 0, noise: 0, roads: 0, invasive: 0,
+            urbanization: 1, food_scarcity: 1, contamination: 1,
+            noise: 1, roads: 1,
         };
         function onLeverInput(slider) {
             const lever = slider.dataset.lever;
-            leverValues[lever] = parseFloat(slider.value);
+            leverValues[lever] = parseInt(slider.value);
             const lbl = document.getElementById(`val-${lever}`);
             if (lbl) lbl.innerText = slider.value;
         }
 
-        // 7 valores -> POST al Engine. async: no bloquea el render.
+        // 5 palancas (1..10 en UI / 0..1 en motor) -> POST al Engine.
         async function pushHumanPressure() {
+            const payload = {};
+            for (const key in leverValues) payload[key] = leverValues[key] / 10;
             try {
-                await api('/api/human_pressure', { ...leverValues });
+                await api('/api/human_pressure', payload);
             } catch (e) { console.error('human_pressure', e); }
+        }
+
+        // Fija la cantidad EXACTA de mascotas o cazadores (entidades ECS).
+        async function setSpeciesQuantity(species, qty) {
+            qty = Math.max(0, parseInt(qty) || 0);
+            try { applySnapshot(await api('/api/population_set', { species, qty })); }
+            catch (e) { console.error('set quantity error', e); }
         }
 
         // Master toggle Presión Humana
@@ -488,15 +610,16 @@
         }
 
         // Si el servidor lleva las palancas (p.ej. tras reset), sincroniza la UI.
+        // El servidor las guarda 0..1; la UI las muestra 1..10.
         function syncEnvLabelsFromLevers(levers) {
             if (!levers) return;
             for (const key in leverValues) {
                 if (key in levers) {
-                    leverValues[key] = levers[key];
+                    leverValues[key] = Math.max(1, Math.round(levers[key] * 10));
                     const s = document.querySelector(`#hp-sliders input[data-lever="${key}"]`);
                     const lbl = document.getElementById(`val-${key}`);
-                    if (s) s.value = levers[key];
-                    if (lbl) lbl.innerText = Number(levers[key]).toFixed(2);
+                    if (s) s.value = leverValues[key];
+                    if (lbl) lbl.innerText = leverValues[key];
                 }
             }
         }
@@ -839,16 +962,18 @@
         let hitPoints = [];                 // puntos dibujados en el último frame (hit-test)
 
         const SID_TO_SPECIES = { neque: 'neques', tigrillo: 'tigrillos', aguila: 'aguilas', feral: 'feral', pajarito: 'pajaritos', cazador: 'cazadores' };
-        const SID_NAMES = { neque: 'Ñeque', tigrillo: 'Tigrillo', aguila: 'Águila', feral: 'Feral (mascota)', pajarito: 'Pajarito', cazador: 'Cazador' };
+        const SID_NAMES = { neque: 'Ñeque', tigrillo: 'Tigrillo', aguila: 'Águila', feral: 'Mascota', pajarito: 'Pajarito', cazador: 'Cazador' };
 
         function _clamp01(v) { return Math.min(1, Math.max(0, v)); }
 
-        // Interpola gris oscuro (biomasa 0%) -> verde selva (100%).
+        // Interpola THEME.biomass.low (0%) -> THEME.biomass.high (100%).
         function biomassColor(v) {
             const t = _clamp01(v / 100);
-            const r = Math.round(55 + (34 - 55) * t);
-            const g = Math.round(58 + (140 - 58) * t);
-            const b = Math.round(63 + (70 - 63) * t);
+            const [r0, g0, b0] = THEME.biomass.low;
+            const [r1, g1, b1] = THEME.biomass.high;
+            const r = Math.round(r0 + (r1 - r0) * t);
+            const g = Math.round(g0 + (g1 - g0) * t);
+            const b = Math.round(b0 + (b1 - b0) * t);
             return `rgb(${r},${g},${b})`;
         }
 
@@ -868,7 +993,7 @@
 
             // --- Fauna: emojis por species_id + highlighting por hover ---
             // (feralPulse se incrementa SOLO en ecoLoop cuando simRunning==true)
-            const feralAlpha = 0.45 + 0.35 * Math.sin(feralPulse);
+            const feralAlpha = THEME.feralPulse.min + THEME.feralPulse.amp * Math.sin(feralPulse);
             hitPoints = [];
 
             const SID_EMOJI = {
@@ -962,9 +1087,9 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawEco(ctx, canvas.width, canvas.height, latestSnapshot);
-                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.fillStyle = THEME.pause.overlay;
                 ctx.fillRect(0, 0, canvas.width, 26);
-                ctx.fillStyle = '#b91c1c';
+                ctx.fillStyle = THEME.pause.text;
                 ctx.font = 'bold 13px system-ui, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('⏸ PAUSADO — presiona Iniciar para continuar', canvas.width / 2, 18);
@@ -1020,17 +1145,17 @@
             hpActive = false;
             document.getElementById('hpToggle').checked = false;
             document.getElementById('hpText').innerText = 'OFF';
-            // Sliders de presión humana -> levers del servidor (todos a 0 tras reset)
+            // Sliders de presión humana: el servidor guarda 0..1, la UI 1..10.
             if (snap.levers) {
                 for (const key in leverValues) {
-                    if (key in snap.levers) leverValues[key] = snap.levers[key];
+                    if (key in snap.levers) leverValues[key] = Math.max(1, Math.round(snap.levers[key] * 10));
                 }
             }
             document.querySelectorAll('#hp-sliders input[data-lever]').forEach(s => {
                 const v = leverValues[s.dataset.lever];
                 s.value = v;
                 const lbl = document.getElementById(`val-${s.dataset.lever}`);
-                if (lbl) lbl.innerText = Number(v).toFixed(2);
+                if (lbl) lbl.innerText = v;
             });
             // Entorno por especie -> sincronizar con el servidor
             if (snap.species_env) {
@@ -1128,9 +1253,11 @@
             }
 
             const dark = document.body.classList.contains('dark-mode');
-            const gridColor  = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
-            const textColor  = dark ? '#94a3b8' : '#6b7280';
-            const axisColor  = dark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)';
+            // `dark` = clase presente = tema CLARO (papel de campo); sin clase
+            // = laboratorio oscuro (base). La paleta vive en THEME.
+            const gridColor  = dark ? THEME.chart.gridLight : THEME.chart.gridDark;
+            const textColor  = dark ? THEME.chart.textLight : THEME.chart.textDark;
+            const axisColor  = dark ? THEME.chart.axisLight : THEME.chart.axisDark;
 
                 // hoveredSid -> clave de especie del gráfico (plural del mockup)
             const hoverSpeciesKey = hoveredSid
@@ -1211,8 +1338,11 @@
         function toggleTheme() {
             const dark = document.body.classList.toggle('dark-mode');
             const btn = document.getElementById('theme-toggle');
-            btn.innerText = dark ? '☀️' : '🌙';
-            btn.title = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+            // Constantes VISUALES del toggle: la clase `dark-mode` ahora
+            // representa el tema CLARO (el laboratorio oscuro es la base),
+            // por eso el emoji/título se muestran invertidos respecto a v1.
+            btn.innerText = dark ? '🌙' : '☀️';
+            btn.title = dark ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
             markDirty();     // repaint del canvas con la paleta del tema
             drawChart();
         }

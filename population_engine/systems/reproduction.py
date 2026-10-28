@@ -39,6 +39,11 @@ CHILD_OFFSET: int = 3         # dispersión máxima de la cría
 REPRO_MIN_COOLDOWN: int = 52  # semanas mínimas entre crías (1 año)
 MAX_BIRTHS_PER_TICK: int = 2  # límite global de crías por semana (control poblacional)
 
+#: Especies cuya población la controla DIRECTAMENTE el usuario (no se
+#: reproducen solas): mascotas y cazadores. Así el input de cantidad de la
+#: UI permanece estable semana a semana.
+NO_SELF_REPRODUCTION: frozenset[str] = frozenset({"feral", "cazador"})
+
 
 class ReproductionSystem(System):
     """Clone well-fed entities; noise lever suppresses mating entirely."""
@@ -79,6 +84,8 @@ class ReproductionSystem(System):
         for entity, sref, diet, genome, pheno, pos, energy in query:
             if not sref.species_id:
                 continue                       # plantas: fuera de alcance
+            if sref.species_id in NO_SELF_REPRODUCTION:
+                continue                       # mascotas/cazadores: los fija el usuario
             if energy.current_energy < REPRO_THRESHOLD:
                 continue
             # Cooldown: un individuo no puede tener crías cada semana.
